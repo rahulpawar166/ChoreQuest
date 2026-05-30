@@ -22,7 +22,7 @@ struct AppRootView: View {
             case .roleSelection:
                 RoleSelectionView(authStore: authStore)
             case .parentHome:
-                ParentHomePlaceholderView(authStore: authStore)
+                ParentDashboardView(authStore: authStore)
             case .kidHome:
                 KidHomePlaceholderView(authStore: authStore)
             }
