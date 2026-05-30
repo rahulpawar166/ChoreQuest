@@ -9,6 +9,7 @@ struct FamilyProfile {
     let id: String
     let familyName: String
     let crestName: String
+    let parentImageBase64: String?
     let heroes: [HeroProfile]
 }
 
@@ -19,5 +20,6 @@ struct HeroProfile: Identifiable, Hashable {
     let avatarName: String
     let avatarIconName: String
     let avatarColorHex: UInt
+    let imageBase64: String?
     let levelTitle: String
 }

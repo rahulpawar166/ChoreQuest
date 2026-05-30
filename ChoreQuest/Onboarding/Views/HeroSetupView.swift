@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct HeroSetupView: View {
     let familyName: String
@@ -17,6 +18,7 @@ struct HeroSetupView: View {
 
     @State private var selectedAvatar = AvatarOption.all[0]
     @State private var heroName = ""
+    @State private var heroImageData: Data?
 
     private var trimmedHeroName: String {
         heroName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -113,6 +115,14 @@ struct HeroSetupView: View {
                     )
                 }
             }
+
+            QuestImagePickerCard(
+                title: "Or add a real hero photo",
+                subtitle: "Use the gallery or camera to personalize this hero profile.",
+                fallbackSystemImage: "person.crop.circle.fill",
+                accentColor: ChoreQuestColors.primary,
+                imageData: $heroImageData
+            )
         }
         .padding(22)
         .background(.white)
@@ -247,10 +257,12 @@ struct HeroSetupView: View {
             HeroProfileDraft(
                 name: trimmedHeroName,
                 avatar: selectedAvatar,
+                imageData: heroImageData,
                 levelTitle: "Level \(heroes.count + 1) Scout"
             )
         )
         heroName = ""
+        heroImageData = nil
         selectedAvatar = AvatarOption.all[heroes.count % AvatarOption.all.count]
     }
 }
@@ -306,14 +318,7 @@ private struct HeroRosterCard: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Circle()
-                .fill(Color(hex: hero.avatar.colorHex).opacity(0.14))
-                .frame(width: 58, height: 58)
-                .overlay {
-                    Image(systemName: hero.avatar.iconName)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(Color(hex: hero.avatar.colorHex))
-                }
+            heroPreview
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(hero.name)
@@ -339,5 +344,25 @@ private struct HeroRosterCard: View {
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: ChoreQuestColors.primary.opacity(0.06), radius: 16, y: 8)
+    }
+
+    @ViewBuilder
+    private var heroPreview: some View {
+        if let imageData = hero.imageData, let uiImage = UIImage(data: imageData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 58, height: 58)
+                .clipShape(Circle())
+        } else {
+            Circle()
+                .fill(Color(hex: hero.avatar.colorHex).opacity(0.14))
+                .frame(width: 58, height: 58)
+                .overlay {
+                    Image(systemName: hero.avatar.iconName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(Color(hex: hero.avatar.colorHex))
+                }
+        }
     }
 }

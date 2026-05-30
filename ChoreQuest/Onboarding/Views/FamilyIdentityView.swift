@@ -10,6 +10,7 @@ import SwiftUI
 struct FamilyIdentityView: View {
     @Binding var familyName: String
     @Binding var crestName: String
+    @Binding var parentImageData: Data?
     let onContinue: () -> Void
     let isSaving: Bool
     let onSignOut: () -> Void
@@ -98,33 +99,36 @@ struct FamilyIdentityView: View {
             }
 
             VStack(alignment: .leading, spacing: 12) {
+                Label("Add the Parent Profile Photo", systemImage: "person.crop.circle.badge.plus")
+                    .font(.custom("Quicksand", size: 20).weight(.bold))
+                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                QuestImagePickerCard(
+                    title: "Use camera or gallery",
+                    subtitle: "Add the parent photo now so this account feels personal from the first quest.",
+                    fallbackSystemImage: "person.crop.circle.fill",
+                    accentColor: ChoreQuestColors.primary,
+                    imageData: $parentImageData
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
                 Label("Claim your Family Crest", systemImage: "shield.fill")
                     .font(.custom("Quicksand", size: 20).weight(.bold))
                     .foregroundStyle(ChoreQuestColors.onSurface)
 
                 HStack(spacing: 18) {
-                    ZStack(alignment: .bottomTrailing) {
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(ChoreQuestColors.surfaceContainerHigh)
-                            .frame(width: 118, height: 118)
-                            .overlay {
-                                Image(systemName: crestIconName)
-                                    .font(.system(size: 42, weight: .bold))
-                                    .foregroundStyle(crestAccent)
-                            }
-
-                        Circle()
-                            .fill(ChoreQuestColors.secondary)
-                            .frame(width: 34, height: 34)
-                            .overlay {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(Color(hex: 0x6f5100))
-                            }
-                    }
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(ChoreQuestColors.surfaceContainerHigh)
+                        .frame(width: 118, height: 118)
+                        .overlay {
+                            Image(systemName: crestIconName)
+                                .font(.system(size: 42, weight: .bold))
+                                .foregroundStyle(crestAccent)
+                        }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Upload a photo or design a crest")
+                        Text("Design a crest")
                             .font(.custom("Quicksand", size: 16).weight(.bold))
                             .foregroundStyle(ChoreQuestColors.onSurface)
 

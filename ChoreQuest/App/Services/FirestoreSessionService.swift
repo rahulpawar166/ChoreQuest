@@ -41,6 +41,7 @@ final class FirestoreSessionService {
             "ownerUserID": userID,
             "familyName": trimmedFamilyName,
             "crestName": draft.crestName,
+            "parentImageBase64": draft.parentImageData?.base64EncodedString() as Any,
             "heroes": heroes.map(heroDictionary),
             "updatedAt": FieldValue.serverTimestamp()
         ]
@@ -69,6 +70,7 @@ final class FirestoreSessionService {
             id: familyID,
             familyName: trimmedFamilyName,
             crestName: draft.crestName,
+            parentImageBase64: draft.parentImageData?.base64EncodedString(),
             heroes: heroes
         )
 
@@ -115,6 +117,7 @@ final class FirestoreSessionService {
             id: familyID,
             familyName: data["familyName"] as? String ?? "",
             crestName: data["crestName"] as? String ?? "Castle Crest",
+            parentImageBase64: data["parentImageBase64"] as? String,
             heroes: heroes
         )
     }
@@ -127,6 +130,7 @@ final class FirestoreSessionService {
             avatarName: draft.avatar.name,
             avatarIconName: draft.avatar.iconName,
             avatarColorHex: draft.avatar.colorHex,
+            imageBase64: draft.imageData?.base64EncodedString(),
             levelTitle: draft.levelTitle
         )
     }
@@ -139,6 +143,7 @@ final class FirestoreSessionService {
             "avatarName": hero.avatarName,
             "avatarIconName": hero.avatarIconName,
             "avatarColorHex": Int(hero.avatarColorHex),
+            "imageBase64": hero.imageBase64 as Any,
             "levelTitle": hero.levelTitle
         ]
     }
@@ -153,6 +158,7 @@ final class FirestoreSessionService {
             avatarName: data["avatarName"] as? String ?? "Default",
             avatarIconName: data["avatarIconName"] as? String ?? "star.fill",
             avatarColorHex: UInt(colorValue),
+            imageBase64: data["imageBase64"] as? String,
             levelTitle: data["levelTitle"] as? String ?? "Level 1 Scout"
         )
     }

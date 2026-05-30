@@ -25,6 +25,7 @@ struct FamilySetupFlowView: View {
                 FamilyIdentityView(
                     familyName: $draft.familyName,
                     crestName: $draft.crestName,
+                    parentImageData: $draft.parentImageData,
                     onContinue: { step = .heroSetup },
                     isSaving: authStore.isLoading,
                     onSignOut: authStore.signOut

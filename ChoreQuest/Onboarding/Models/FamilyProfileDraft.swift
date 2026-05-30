@@ -10,5 +10,6 @@ import Foundation
 struct FamilyProfileDraft {
     var familyName = ""
     var crestName = "Castle Crest"
+    var parentImageData: Data?
     var heroes: [HeroProfileDraft] = []
 }
