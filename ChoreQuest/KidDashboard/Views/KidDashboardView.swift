@@ -372,7 +372,7 @@ struct KidDashboardView: View {
                             KidRewardCard(
                                 reward: reward,
                                 availableXP: snapshot.heroXP,
-                                latestClaim: snapshot.rewardClaims.first(where: { $0.rewardID == reward.id && $0.status == .claimed }),
+                                latestClaim: snapshot.rewardClaims.first(where: { $0.rewardID == reward.id }),
                                 isClaiming: store.isClaimingReward
                             ) {
                                 await store.claimReward(
