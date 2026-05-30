@@ -423,6 +423,7 @@ struct ParentApprovalCard: View {
 
 struct ParentHeroCard: View {
     let hero: ParentHeroSummary
+    let onViewHistory: () -> Void
 
     var body: some View {
         ParentSurfaceCard {
@@ -464,13 +465,13 @@ struct ParentHeroCard: View {
                 }
 
                 HStack(spacing: 12) {
-                    Text("Hero profile loaded from your family record.")
+                    Text("Quest proof and reward claim history for this hero.")
                         .font(.custom("Quicksand", size: 14).weight(.medium))
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
 
                     Spacer()
 
-                    Button("Manage") {}
+                    Button("History", action: onViewHistory)
                         .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
                 }
             }
@@ -480,40 +481,62 @@ struct ParentHeroCard: View {
 
 struct FamilyRewardCard: View {
     let reward: FamilyReward
+    let isDeleting: Bool
+    let onDelete: () async -> Void
 
     var body: some View {
         ParentSurfaceCard {
-            HStack(spacing: 14) {
-                Circle()
-                    .fill(ChoreQuestColors.secondary)
-                    .frame(width: 52, height: 52)
-                    .overlay {
-                        Image(systemName: reward.iconName)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(ChoreQuestColors.secondaryText)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
+                    Circle()
+                        .fill(ChoreQuestColors.secondary)
+                        .frame(width: 52, height: 52)
+                        .overlay {
+                            Image(systemName: reward.iconName)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(ChoreQuestColors.secondaryText)
+                        }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(reward.title)
+                            .font(.custom("Quicksand", size: 18).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurface)
+
+                        Text(reward.details)
+                            .font(.custom("Quicksand", size: 13).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                     }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(reward.title)
-                        .font(.custom("Quicksand", size: 18).weight(.bold))
-                        .foregroundStyle(ChoreQuestColors.onSurface)
+                    Spacer()
 
-                    Text(reward.details)
-                        .font(.custom("Quicksand", size: 13).weight(.medium))
-                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    Text("\(reward.costXP) XP")
+                        .font(.custom("Quicksand", size: 12).weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(ChoreQuestColors.secondary)
+                        .foregroundStyle(ChoreQuestColors.secondaryText)
+                        .clipShape(Capsule())
                 }
 
-                Spacer()
-
-                Text("\(reward.costXP) XP")
-                    .font(.custom("Quicksand", size: 12).weight(.bold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(ChoreQuestColors.secondary)
-                    .foregroundStyle(ChoreQuestColors.secondaryText)
-                    .clipShape(Capsule())
+                Button(role: .destructive) {
+                    Task { await onDelete() }
+                } label: {
+                    HStack {
+                        if isDeleting {
+                            ProgressView()
+                                .tint(ChoreQuestColors.errorText)
+                        } else {
+                            Image(systemName: "trash")
+                        }
+                        Text(isDeleting ? "Removing..." : "Remove Reward")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(ParentOutlinePillStyle())
+                .disabled(isDeleting)
             }
         }
+        .opacity(isDeleting ? 0.72 : 1)
     }
 }
 

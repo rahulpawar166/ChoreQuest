@@ -12,6 +12,7 @@ struct ParentDashboardView: View {
     @StateObject private var dashboardStore = ParentDashboardStore()
 
     @State private var selectedTab: ParentDashboardTab = .quests
+    @State private var selectedHistorySnapshot: HeroHistorySnapshot?
     private var snapshot: ParentDashboardSnapshot? {
         authStore.familyProfile.map { familyProfile in
             let familyProgress = FamilyProgressSnapshot.resolve(
@@ -164,6 +165,11 @@ struct ParentDashboardView: View {
                 authStore.errorMessage = newValue
             }
         ))
+        .sheet(item: $selectedHistorySnapshot) { snapshot in
+            NavigationStack {
+                HeroHistoryView(snapshot: snapshot)
+            }
+        }
     }
 
     private func header(snapshot: ParentDashboardSnapshot) -> some View {
@@ -435,7 +441,12 @@ struct ParentDashboardView: View {
             } else {
                 VStack(spacing: 14) {
                     ForEach(snapshot.availableRewards) { reward in
-                        FamilyRewardCard(reward: reward)
+                        FamilyRewardCard(
+                            reward: reward,
+                            isDeleting: dashboardStore.deletingRewardID == reward.id
+                        ) {
+                            await dashboardStore.deleteReward(reward)
+                        }
                     }
                 }
             }
@@ -468,7 +479,16 @@ struct ParentDashboardView: View {
             } else {
                 VStack(spacing: 16) {
                     ForEach(snapshot.heroes) { hero in
-                        ParentHeroCard(hero: hero)
+                        ParentHeroCard(hero: hero) {
+                            guard let familyProfile = authStore.familyProfile else { return }
+                            selectedHistorySnapshot = HeroHistorySnapshot.resolve(
+                                familyProfile: familyProfile,
+                                heroID: hero.id,
+                                quests: dashboardStore.quests,
+                                submissions: dashboardStore.submissions,
+                                claims: dashboardStore.rewardClaims
+                            )
+                        }
                     }
                 }
             }

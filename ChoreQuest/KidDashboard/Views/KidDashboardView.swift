@@ -11,6 +11,7 @@ struct KidDashboardView: View {
     @ObservedObject var authStore: AuthStore
     @StateObject private var store = KidDashboardStore()
     @State private var submissionQuest: FamilyQuest?
+    @State private var isPresentingHistory = false
 
     private var familyProfile: FamilyProfile? {
         authStore.familyProfile
@@ -72,8 +73,20 @@ struct KidDashboardView: View {
                 }
             }
 
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if snapshot != nil {
+                    Button {
+                        isPresentingHistory = true
+                    } label: {
+                        Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    }
+                }
+
                 Menu {
+                    Button("History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90") {
+                        isPresentingHistory = true
+                    }
+
                     Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
                         Task {
                             await authStore.clearSelectedRole()
@@ -115,6 +128,24 @@ struct KidDashboardView: View {
                             familyID: familyProfile.id,
                             heroes: familyProfile.heroes
                         )
+                    }
+                }
+            }
+        }
+        .sheet(
+            isPresented: $isPresentingHistory,
+            onDismiss: { isPresentingHistory = false }
+        ) {
+            if let familyProfile, let snapshot {
+                NavigationStack {
+                    if let historySnapshot = HeroHistorySnapshot.resolve(
+                        familyProfile: familyProfile,
+                        heroID: snapshot.hero.id,
+                        quests: store.quests,
+                        submissions: store.submissions,
+                        claims: store.rewardClaims
+                    ) {
+                        HeroHistoryView(snapshot: historySnapshot)
                     }
                 }
             }
@@ -306,7 +337,13 @@ struct KidDashboardView: View {
                     message: "Ask a parent to add a few rewards so heroes can spend XP."
                 )
             } else {
-                VStack(spacing: 14) {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 14),
+                        GridItem(.flexible(), spacing: 14)
+                    ],
+                    spacing: 14
+                ) {
                     ForEach(snapshot.rewards) { reward in
                         KidRewardCard(
                             reward: reward,
@@ -375,6 +412,7 @@ private struct KidRewardCard: View {
     let latestClaim: RewardClaim?
     let isClaiming: Bool
     let onClaim: () async -> Bool
+    @State private var isShowingClaimConfirmation = false
 
     private var canClaim: Bool {
         availableXP >= reward.costXP && latestClaim == nil
@@ -424,12 +462,20 @@ private struct KidRewardCard: View {
                 }
 
                 Button(latestClaim == nil ? "Claim Reward" : "Claim Submitted") {
-                    Task { _ = await onClaim() }
+                    isShowingClaimConfirmation = true
                 }
                 .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
                 .disabled(!canClaim || isClaiming)
                 .opacity(canClaim ? 1 : 0.6)
             }
+        }
+        .alert("Claim Reward?", isPresented: $isShowingClaimConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Claim") {
+                Task { _ = await onClaim() }
+            }
+        } message: {
+            Text("This will reserve \(reward.costXP) XP for \(reward.title).")
         }
     }
 

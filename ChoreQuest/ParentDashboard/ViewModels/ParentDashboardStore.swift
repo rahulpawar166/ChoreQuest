@@ -20,6 +20,7 @@ final class ParentDashboardStore: ObservableObject {
     @Published private(set) var isSavingQuest = false
     @Published private(set) var isUpdatingApproval = false
     @Published private(set) var isSavingReward = false
+    @Published private(set) var deletingRewardID: String?
     @Published private(set) var isUpdatingClaim = false
     @Published var isPresentingCreateQuest = false
     @Published var isPresentingCreateReward = false
@@ -86,6 +87,19 @@ final class ParentDashboardStore: ObservableObject {
         } catch {
             errorMessage = "We couldn't save this reward right now."
             return false
+        }
+    }
+
+    func deleteReward(_ reward: FamilyReward) async {
+        deletingRewardID = reward.id
+        errorMessage = nil
+        defer { deletingRewardID = nil }
+
+        do {
+            try await rewardService.deleteReward(familyID: reward.familyID, rewardID: reward.id)
+            rewards.removeAll { $0.id == reward.id }
+        } catch {
+            errorMessage = "We couldn't remove this reward right now."
         }
     }
 
