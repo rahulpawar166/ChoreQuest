@@ -94,13 +94,21 @@ final class RewardService {
         ], merge: false)
     }
 
-    func updateClaimStatus(familyID: String, claimID: String, status: RewardClaimStatus) async throws {
+    func updateClaimStatus(
+        familyID: String,
+        claimID: String,
+        status: RewardClaimStatus,
+        parentComment: String? = nil
+    ) async throws {
+        let trimmedComment = parentComment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
         try await db.collection("families")
             .document(familyID)
             .collection("rewardClaims")
             .document(claimID)
             .setDataAsync([
                 "status": status.rawValue,
+                "parentComment": trimmedComment.isEmpty ? FieldValue.delete() : trimmedComment,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
     }
@@ -152,6 +160,7 @@ final class RewardService {
             heroID: heroID,
             heroName: heroName,
             status: status,
+            parentComment: data["parentComment"] as? String,
             createdAt: (data["createdAt"] as? Timestamp)?.dateValue(),
             updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue()
         )

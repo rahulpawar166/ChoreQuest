@@ -16,6 +16,7 @@ struct ParentDashboardView: View {
     @State private var isPresentingFamilyEditor = false
     @State private var isPresentingFamilyRewardEditor = false
     @State private var selectedHeroForEditing: HeroProfile?
+    @State private var pendingRejectionTarget: ParentRejectionTarget?
     private var snapshot: ParentDashboardSnapshot? {
         authStore.familyProfile.map { familyProfile in
             let familyProgress = FamilyProgressSnapshot.resolve(
@@ -176,6 +177,20 @@ struct ParentDashboardView: View {
         .sheet(item: $selectedHistorySnapshot) { snapshot in
             NavigationStack {
                 HeroHistoryView(snapshot: snapshot)
+            }
+        }
+        .sheet(item: $pendingRejectionTarget) { target in
+            ParentRejectionCommentView(
+                title: target.title,
+                subtitle: target.subtitle,
+                isSaving: target.isApproval ? dashboardStore.isUpdatingApproval : dashboardStore.isUpdatingClaim
+            ) { comment in
+                switch target {
+                case .approval(let approval):
+                    await dashboardStore.reject(approval, comment: comment)
+                case .rewardClaim(let claim):
+                    await dashboardStore.reject(claim, comment: comment)
+                }
             }
         }
         .sheet(isPresented: $isPresentingFamilyEditor) {
@@ -398,7 +413,7 @@ struct ParentDashboardView: View {
                                 await dashboardStore.approve(approval)
                             },
                             onReject: {
-                                await dashboardStore.reject(approval)
+                                pendingRejectionTarget = .approval(approval)
                             }
                         )
                     }
@@ -419,7 +434,7 @@ struct ParentDashboardView: View {
                                 await dashboardStore.fulfill(claim)
                             },
                             onReject: {
-                                await dashboardStore.reject(claim)
+                                pendingRejectionTarget = .rewardClaim(claim)
                             }
                         )
                     }
@@ -607,6 +622,47 @@ struct ParentDashboardView: View {
                 .foregroundStyle(tint)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+private enum ParentRejectionTarget: Identifiable {
+    case approval(ParentApproval)
+    case rewardClaim(RewardClaim)
+
+    var id: String {
+        switch self {
+        case .approval(let approval):
+            return "approval-\(approval.id)"
+        case .rewardClaim(let claim):
+            return "claim-\(claim.id)"
+        }
+    }
+
+    var isApproval: Bool {
+        switch self {
+        case .approval:
+            return true
+        case .rewardClaim:
+            return false
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .approval(let approval):
+            return "Reject \(approval.choreTitle)?"
+        case .rewardClaim(let claim):
+            return "Reject \(claim.rewardTitle)?"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .approval(let approval):
+            return "Add a short note so \(approval.hero.name) knows what to fix before sending new proof."
+        case .rewardClaim(let claim):
+            return "Add a short note so \(claim.heroName) knows why this reward claim was turned down."
+        }
     }
 }
 

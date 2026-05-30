@@ -257,6 +257,15 @@ struct HeroHistoryView: View {
                                     if item.status != .claimed {
                                         historyDateRow(title: item.status == .fulfilled ? "Granted" : "Reviewed", date: item.updatedAt)
                                     }
+                                    if let parentComment = item.parentComment, !parentComment.isEmpty {
+                                        Text(parentComment)
+                                            .font(.custom("Quicksand", size: 13).weight(.medium))
+                                            .foregroundStyle(item.status == .rejected ? ChoreQuestColors.errorText : ChoreQuestColors.onSurfaceVariant)
+                                            .padding(12)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(item.status == .rejected ? ChoreQuestColors.errorContainer : ChoreQuestColors.surfaceContainerLow)
+                                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    }
                                 }
                             }
                         }

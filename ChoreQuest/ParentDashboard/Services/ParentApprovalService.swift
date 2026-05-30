@@ -47,14 +47,12 @@ final class ParentApprovalService {
         status: KidQuestSubmissionStatus,
         parentComment: String? = nil
     ) async throws {
+        let trimmedComment = parentComment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         var payload: [String: Any] = [
             "status": status.rawValue,
+            "parentComment": trimmedComment.isEmpty ? FieldValue.delete() : trimmedComment,
             "updatedAt": FieldValue.serverTimestamp()
         ]
-
-        if let parentComment, !parentComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            payload["parentComment"] = parentComment
-        }
 
         try await db.collection("families")
             .document(familyID)

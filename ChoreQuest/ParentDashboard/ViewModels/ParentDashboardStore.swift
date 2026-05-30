@@ -104,19 +104,19 @@ final class ParentDashboardStore: ObservableObject {
     }
 
     func approve(_ approval: ParentApproval) async {
-        await updateApproval(approval, status: .approved)
+        await updateApproval(approval, status: .approved, parentComment: nil)
     }
 
-    func reject(_ approval: ParentApproval) async {
-        await updateApproval(approval, status: .rejected)
+    func reject(_ approval: ParentApproval, comment: String?) async {
+        await updateApproval(approval, status: .rejected, parentComment: comment)
     }
 
     func fulfill(_ claim: RewardClaim) async {
-        await updateClaim(claim, status: .fulfilled)
+        await updateClaim(claim, status: .fulfilled, parentComment: nil)
     }
 
-    func reject(_ claim: RewardClaim) async {
-        await updateClaim(claim, status: .rejected)
+    func reject(_ claim: RewardClaim, comment: String?) async {
+        await updateClaim(claim, status: .rejected, parentComment: comment)
     }
 
     private func startSubmissionsListenerIfNeeded(familyID: String, heroes: [HeroProfile]) {
@@ -204,7 +204,11 @@ final class ParentDashboardStore: ObservableObject {
         }
     }
 
-    private func updateApproval(_ approval: ParentApproval, status: KidQuestSubmissionStatus) async {
+    private func updateApproval(
+        _ approval: ParentApproval,
+        status: KidQuestSubmissionStatus,
+        parentComment: String?
+    ) async {
         guard let familyID = currentFamilyID else { return }
 
         isUpdatingApproval = true
@@ -214,7 +218,8 @@ final class ParentDashboardStore: ObservableObject {
             try await approvalService.updateSubmissionStatus(
                 familyID: familyID,
                 submissionID: approval.id,
-                status: status
+                status: status,
+                parentComment: parentComment
             )
         } catch {
             errorMessage = status == .approved
@@ -223,13 +228,22 @@ final class ParentDashboardStore: ObservableObject {
         }
     }
 
-    private func updateClaim(_ claim: RewardClaim, status: RewardClaimStatus) async {
+    private func updateClaim(
+        _ claim: RewardClaim,
+        status: RewardClaimStatus,
+        parentComment: String?
+    ) async {
         guard let familyID = currentFamilyID else { return }
         isUpdatingClaim = true
         defer { isUpdatingClaim = false }
 
         do {
-            try await rewardService.updateClaimStatus(familyID: familyID, claimID: claim.id, status: status)
+            try await rewardService.updateClaimStatus(
+                familyID: familyID,
+                claimID: claim.id,
+                status: status,
+                parentComment: parentComment
+            )
         } catch {
             errorMessage = status == .fulfilled
                 ? "We couldn't mark this reward as granted right now."

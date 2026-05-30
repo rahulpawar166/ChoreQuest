@@ -65,6 +65,7 @@ struct HeroHistorySnapshot: Identifiable, Hashable {
                     rewardIconName: claim.rewardIconName,
                     costXP: claim.rewardCostXP,
                     status: claim.status,
+                    parentComment: claim.parentComment,
                     claimedAt: claim.createdAt,
                     updatedAt: claim.updatedAt
                 )
@@ -103,6 +104,7 @@ struct HeroRewardHistoryItem: Identifiable, Hashable {
     let rewardIconName: String
     let costXP: Int
     let status: RewardClaimStatus
+    let parentComment: String?
     let claimedAt: Date?
     let updatedAt: Date?
 }

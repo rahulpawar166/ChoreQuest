@@ -77,6 +77,7 @@ struct RewardClaim: Identifiable, Hashable {
     let heroID: String
     let heroName: String
     let status: RewardClaimStatus
+    let parentComment: String?
     let createdAt: Date?
     let updatedAt: Date?
 }

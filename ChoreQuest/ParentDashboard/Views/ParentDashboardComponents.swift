@@ -146,7 +146,7 @@ struct ParentQuestRow: View {
 
     var body: some View {
         ParentSurfaceCard {
-            HStack(alignment: .center, spacing: 16) {
+            HStack(alignment: .top, spacing: 16) {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(iconBackground)
                     .frame(width: 62, height: 62)
@@ -156,61 +156,87 @@ struct ParentQuestRow: View {
                             .foregroundStyle(iconForeground)
                     }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 8) {
                         Text(quest.title)
                             .font(.custom("Quicksand", size: 18).weight(.bold))
                             .foregroundStyle(ChoreQuestColors.onSurface)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
+
+                        Spacer(minLength: 0)
 
                         if quest.isRecurring {
-                            Text("RECURRING")
-                                .font(.custom("Quicksand", size: 10).weight(.bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(ChoreQuestColors.tertiaryFixed)
-                                .foregroundStyle(ChoreQuestColors.tertiaryText)
-                                .clipShape(Capsule())
+                            recurringPill
                         }
                     }
 
                     Text(quest.details)
                         .font(.custom("Quicksand", size: 14).weight(.medium))
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(spacing: 10) {
-                        Text(quest.category.title)
-                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(ChoreQuestColors.surfaceContainerLow)
-                            .foregroundStyle(ChoreQuestColors.primary)
-                            .clipShape(Capsule())
+                    HStack(alignment: .bottom, spacing: 12) {
+                        HStack(spacing: 10) {
+                            categoryPill
+                            statusPill
+                        }
 
-                        Text(quest.status.title)
-                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(statusBackground)
-                            .foregroundStyle(statusForeground)
-                            .clipShape(Capsule())
+                        Spacer(minLength: 12)
+
+                        VStack(alignment: .trailing, spacing: 10) {
+                            assignmentView
+                            xpPill
+                        }
                     }
-                }
-
-                Spacer(minLength: 10)
-
-                VStack(alignment: .trailing, spacing: 10) {
-                    assignmentView
-
-                    Text("\(quest.xpValue) XP")
-                        .font(.custom("Quicksand", size: 13).weight(.bold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(ChoreQuestColors.secondary)
-                        .foregroundStyle(ChoreQuestColors.secondaryText)
-                        .clipShape(Capsule())
                 }
             }
         }
+    }
+
+    private var recurringPill: some View {
+        Text("RECURRING")
+            .font(.custom("Quicksand", size: 10).weight(.bold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(ChoreQuestColors.tertiaryFixed)
+            .foregroundStyle(ChoreQuestColors.tertiaryText)
+            .clipShape(Capsule())
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var categoryPill: some View {
+        Text(quest.category.title)
+            .font(.custom("Quicksand", size: 12).weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(ChoreQuestColors.surfaceContainerLow)
+            .foregroundStyle(ChoreQuestColors.primary)
+            .clipShape(Capsule())
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var statusPill: some View {
+        Text(effectiveStatus.title)
+            .font(.custom("Quicksand", size: 12).weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(statusBackground)
+            .foregroundStyle(statusForeground)
+            .clipShape(Capsule())
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var xpPill: some View {
+        Text("\(quest.xpValue) XP")
+            .font(.custom("Quicksand", size: 13).weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(ChoreQuestColors.secondary)
+            .foregroundStyle(ChoreQuestColors.secondaryText)
+            .clipShape(Capsule())
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private var iconBackground: Color {
@@ -258,10 +284,14 @@ struct ParentQuestRow: View {
             Text("Open to claim")
                 .font(.custom("Quicksand", size: 13).weight(.bold))
                 .foregroundStyle(ChoreQuestColors.primary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         case .everyone:
             Label("Everyone", systemImage: "person.3.fill")
                 .font(.custom("Quicksand", size: 13).weight(.bold))
                 .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         case .hero(let hero):
             HStack(spacing: 8) {
                 QuestProfileAvatar(
@@ -275,7 +305,9 @@ struct ParentQuestRow: View {
                 Text(hero.name)
                     .font(.custom("Quicksand", size: 13).weight(.bold))
                     .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    .lineLimit(1)
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 }
@@ -284,7 +316,7 @@ struct ParentApprovalCard: View {
     let approval: ParentApproval
     let isUpdating: Bool
     let onApprove: () async -> Void
-    let onReject: () async -> Void
+    let onReject: () -> Void
 
     var body: some View {
         ParentSurfaceCard {
@@ -348,7 +380,7 @@ struct ParentApprovalCard: View {
                     .disabled(isUpdating)
 
                     Button {
-                        Task { await onReject() }
+                        onReject()
                     } label: {
                         Label("Reject", systemImage: "xmark.circle")
                             .frame(maxWidth: .infinity)
@@ -549,7 +581,7 @@ struct RewardClaimCard: View {
     let hero: ParentAssignee?
     let isUpdating: Bool
     let onFulfill: () async -> Void
-    let onReject: () async -> Void
+    let onReject: () -> Void
 
     var body: some View {
         ParentSurfaceCard {
@@ -612,7 +644,7 @@ struct RewardClaimCard: View {
                     .disabled(isUpdating)
 
                     Button {
-                        Task { await onReject() }
+                        onReject()
                     } label: {
                         Label("Reject", systemImage: "xmark.circle")
                             .frame(maxWidth: .infinity)
@@ -623,6 +655,98 @@ struct RewardClaimCard: View {
             }
         }
         .opacity(isUpdating ? 0.72 : 1)
+    }
+}
+
+struct ParentRejectionCommentView: View {
+    let title: String
+    let subtitle: String
+    let isSaving: Bool
+    let onSubmit: (String) async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var comment = ""
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ChoreQuestColors.background.ignoresSafeArea()
+                QuestBackground()
+
+                VStack(spacing: 20) {
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text(title)
+                                .font(.custom("Quicksand", size: 24).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
+
+                            Text(subtitle)
+                                .font(.custom("Quicksand", size: 14).weight(.medium))
+                                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("COMMENT")
+                                    .font(.custom("Quicksand", size: 12).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.primary)
+
+                                ZStack(alignment: .topLeading) {
+                                    if comment.isEmpty {
+                                        Text("Tell them what needs to change.")
+                                            .font(.custom("Quicksand", size: 16).weight(.medium))
+                                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant.opacity(0.6))
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 18)
+                                    }
+
+                                    TextEditor(text: $comment)
+                                        .scrollContentBackground(.hidden)
+                                        .padding(12)
+                                        .frame(minHeight: 140)
+                                        .foregroundStyle(ChoreQuestColors.onSurface)
+                                }
+                                .background(ChoreQuestColors.surfaceContainerLowest)
+                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .stroke(ChoreQuestColors.outlineVariant, lineWidth: 2)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+            }
+            .navigationTitle("Reject with Comment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .disabled(isSaving)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            await onSubmit(comment)
+                            dismiss()
+                        }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text("Reject")
+                                .fontWeight(.bold)
+                        }
+                    }
+                    .disabled(isSaving)
+                }
+            }
+        }
     }
 }
 

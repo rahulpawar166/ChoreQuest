@@ -509,7 +509,11 @@ private struct KidRewardCard: View {
         switch claim.status {
         case .claimed: return "Claim sent to parent. XP is reserved."
         case .fulfilled: return "Reward granted by parent."
-        case .rejected: return "Claim was rejected."
+        case .rejected:
+            if let parentComment = claim.parentComment, !parentComment.isEmpty {
+                return "Claim rejected: \(parentComment)"
+            }
+            return "Claim was rejected."
         }
     }
 }
