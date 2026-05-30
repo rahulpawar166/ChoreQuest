@@ -48,7 +48,7 @@ final class ParentApprovalService {
         parentComment: String? = nil
     ) async throws {
         let trimmedComment = parentComment?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        var payload: [String: Any] = [
+        let payload: [String: Any] = [
             "status": status.rawValue,
             "parentComment": trimmedComment.isEmpty ? FieldValue.delete() : trimmedComment,
             "updatedAt": FieldValue.serverTimestamp()
