@@ -47,6 +47,30 @@ final class ParentQuestService {
         ], merge: false)
     }
 
+    func claimQuest(familyID: String, questID: String, heroID: String) async throws {
+        try await db.collection("families")
+            .document(familyID)
+            .collection("quests")
+            .document(questID)
+            .setQuestDataAsync([
+                "assignmentMode": QuestAssignmentChoice.specificHero.rawValue,
+                "assignedHeroID": heroID,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+    }
+
+    func unassignQuest(familyID: String, questID: String) async throws {
+        try await db.collection("families")
+            .document(familyID)
+            .collection("quests")
+            .document(questID)
+            .setQuestDataAsync([
+                "assignmentMode": QuestAssignmentChoice.unassigned.rawValue,
+                "assignedHeroID": NSNull(),
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+    }
+
     private func quest(from document: QueryDocumentSnapshot, familyID: String, heroes: [HeroProfile]) -> FamilyQuest? {
         let data = document.data()
 

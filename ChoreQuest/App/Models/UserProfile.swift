@@ -11,4 +11,5 @@ struct UserProfile {
     let familyID: String?
     let onboardingCompleted: Bool
     let selectedRole: AppRole?
+    let selectedHeroID: String?
 }

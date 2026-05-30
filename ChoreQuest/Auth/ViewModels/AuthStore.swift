@@ -117,7 +117,8 @@ final class AuthStore: ObservableObject {
                     email: profile.email,
                     familyID: profile.familyID,
                     onboardingCompleted: profile.onboardingCompleted,
-                    selectedRole: role
+                    selectedRole: role,
+                    selectedHeroID: profile.selectedHeroID
                 )
             }
             route = route(for: userProfile, familyProfile: familyProfile)
@@ -145,7 +146,8 @@ final class AuthStore: ObservableObject {
                     email: profile.email,
                     familyID: profile.familyID,
                     onboardingCompleted: profile.onboardingCompleted,
-                    selectedRole: nil
+                    selectedRole: nil,
+                    selectedHeroID: nil
                 )
             }
             route = .roleSelection
@@ -200,7 +202,8 @@ final class AuthStore: ObservableObject {
                 email: user.email ?? "",
                 familyID: nil,
                 onboardingCompleted: false,
-                selectedRole: nil
+                selectedRole: nil,
+                selectedHeroID: nil
             )
             familyProfile = nil
             route = .onboarding
@@ -215,6 +218,32 @@ final class AuthStore: ObservableObject {
         userProfile = snapshot.userProfile
         familyProfile = snapshot.familyProfile
         route = route(for: snapshot.userProfile, familyProfile: snapshot.familyProfile)
+    }
+
+    func selectHero(_ heroID: String) async {
+        guard let currentUserID, let profile = userProfile else {
+            route = .auth
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            try await sessionService.updateSelectedHero(userID: currentUserID, heroID: heroID)
+            userProfile = UserProfile(
+                userID: profile.userID,
+                email: profile.email,
+                familyID: profile.familyID,
+                onboardingCompleted: profile.onboardingCompleted,
+                selectedRole: profile.selectedRole,
+                selectedHeroID: heroID
+            )
+        } catch {
+            errorMessage = "We couldn't switch the hero profile right now."
+        }
+
+        isLoading = false
     }
 
     private func route(for userProfile: UserProfile?, familyProfile: FamilyProfile?) -> AppRoute {

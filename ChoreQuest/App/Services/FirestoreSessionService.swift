@@ -52,6 +52,7 @@ final class FirestoreSessionService {
             "familyID": familyID,
             "onboardingCompleted": true,
             "selectedRole": NSNull(),
+            "selectedHeroID": NSNull(),
             "updatedAt": FieldValue.serverTimestamp()
         ]
 
@@ -63,7 +64,8 @@ final class FirestoreSessionService {
             email: email ?? "",
             familyID: familyID,
             onboardingCompleted: true,
-            selectedRole: nil
+            selectedRole: nil,
+            selectedHeroID: nil
         )
 
         let familyProfile = FamilyProfile(
@@ -85,9 +87,18 @@ final class FirestoreSessionService {
         try await db.collection("users").document(userID).setDataAsync(data, merge: true)
     }
 
+    func updateSelectedHero(userID: String, heroID: String) async throws {
+        let data: [String: Any] = [
+            "selectedHeroID": heroID,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await db.collection("users").document(userID).setDataAsync(data, merge: true)
+    }
+
     func clearSelectedRole(userID: String) async throws {
         let data: [String: Any] = [
             "selectedRole": NSNull(),
+            "selectedHeroID": NSNull(),
             "updatedAt": FieldValue.serverTimestamp()
         ]
         try await db.collection("users").document(userID).setDataAsync(data, merge: true)
@@ -102,7 +113,8 @@ final class FirestoreSessionService {
             email: (data["email"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? email ?? "",
             familyID: data["familyID"] as? String,
             onboardingCompleted: data["onboardingCompleted"] as? Bool ?? false,
-            selectedRole: selectedRole
+            selectedRole: selectedRole,
+            selectedHeroID: data["selectedHeroID"] as? String
         )
     }
 

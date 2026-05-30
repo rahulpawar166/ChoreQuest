@@ -24,7 +24,7 @@ struct AppRootView: View {
             case .parentHome:
                 ParentDashboardView(authStore: authStore)
             case .kidHome:
-                KidHomePlaceholderView(authStore: authStore)
+                KidDashboardView(authStore: authStore)
             }
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.82), value: authStore.route)
