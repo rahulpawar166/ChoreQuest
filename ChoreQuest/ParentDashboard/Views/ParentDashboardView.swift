@@ -16,6 +16,7 @@ struct ParentDashboardView: View {
     @State private var isPresentingFamilyEditor = false
     @State private var isPresentingFamilyRewardEditor = false
     @State private var selectedHeroForEditing: HeroProfile?
+    @State private var selectedQuestForDetails: FamilyQuest?
     @State private var pendingRejectionTarget: ParentRejectionTarget?
     private var snapshot: ParentDashboardSnapshot? {
         authStore.familyProfile.map { familyProfile in
@@ -179,6 +180,35 @@ struct ParentDashboardView: View {
                 HeroHistoryView(snapshot: snapshot)
             }
         }
+        .sheet(item: $selectedQuestForDetails) { quest in
+            if let familyProfile = authStore.familyProfile {
+                NavigationStack {
+                    ParentQuestDetailView(
+                        quest: quest,
+                        familyProfile: familyProfile,
+                        isSaving: dashboardStore.isSavingQuest,
+                        isDeleting: dashboardStore.deletingQuestID == quest.id
+                    ) { assignment in
+                        let didUpdate = await dashboardStore.updateQuestAssignment(
+                            quest,
+                            assignment: assignment,
+                            heroes: familyProfile.heroes
+                        )
+                        if didUpdate {
+                            selectedQuestForDetails = nil
+                        }
+                    } onDelete: {
+                        let didDelete = await dashboardStore.deleteQuest(
+                            quest,
+                            heroes: familyProfile.heroes
+                        )
+                        if didDelete {
+                            selectedQuestForDetails = nil
+                        }
+                    }
+                }
+            }
+        }
         .sheet(item: $pendingRejectionTarget) { target in
             ParentRejectionCommentView(
                 title: target.title,
@@ -300,42 +330,44 @@ struct ParentDashboardView: View {
                 }
             }
 
-            HStack(spacing: 16) {
-                Circle()
-                    .fill(Color.white.opacity(0.18))
-                    .frame(width: 72, height: 72)
-                    .overlay {
-                        Image(systemName: "flag.checkered.2.crossed")
-                            .font(.system(size: 30, weight: .bold))
+            if snapshot.activeQuests.isEmpty {
+                HStack(spacing: 16) {
+                    Circle()
+                        .fill(Color.white.opacity(0.18))
+                        .frame(width: 72, height: 72)
+                        .overlay {
+                            Image(systemName: "flag.checkered.2.crossed")
+                                .font(.system(size: 30, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Deploy New Quest")
+                            .font(.custom("Quicksand", size: 24).weight(.bold))
                             .foregroundStyle(.white)
+
+                        Text("Assign the next adventure to your squad, or leave it open so a hero can claim it.")
+                            .font(.custom("Quicksand", size: 15).weight(.medium))
+                            .foregroundStyle(.white.opacity(0.92))
                     }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Deploy New Quest")
-                        .font(.custom("Quicksand", size: 24).weight(.bold))
-                        .foregroundStyle(.white)
-
-                    Text("Assign the next adventure to your squad, or leave it open so a hero can claim it.")
-                        .font(.custom("Quicksand", size: 15).weight(.medium))
-                        .foregroundStyle(.white.opacity(0.92))
+                    Spacer(minLength: 0)
                 }
-
-                Spacer(minLength: 0)
-            }
-            .padding(24)
-            .background(
-                LinearGradient(
-                    colors: [ChoreQuestColors.primary, ChoreQuestColors.primaryContainer],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                .padding(24)
+                .background(
+                    LinearGradient(
+                        colors: [ChoreQuestColors.primary, ChoreQuestColors.primaryContainer],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(ChoreQuestColors.primaryContainer.opacity(0.6), lineWidth: 1.5)
-            )
-            .shadow(color: ChoreQuestColors.primary.opacity(0.18), radius: 22, y: 10)
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(ChoreQuestColors.primaryContainer.opacity(0.6), lineWidth: 1.5)
+                )
+                .shadow(color: ChoreQuestColors.primary.opacity(0.18), radius: 22, y: 10)
+            }
 
             VStack(spacing: 16) {
                 ParentSectionHeader(title: "Active Quests", actionTitle: nil, action: nil)
@@ -371,7 +403,10 @@ struct ParentDashboardView: View {
                         ForEach(snapshot.activeQuests) { quest in
                             ParentQuestRow(
                                 quest: quest,
-                                isAwaitingApproval: snapshot.awaitingApprovalQuestIDs.contains(quest.id)
+                                isAwaitingApproval: snapshot.awaitingApprovalQuestIDs.contains(quest.id),
+                                onTap: {
+                                    selectedQuestForDetails = quest
+                                }
                             )
                         }
                     }
@@ -622,6 +657,246 @@ struct ParentDashboardView: View {
                 .foregroundStyle(tint)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+private struct ParentQuestDetailView: View {
+    let quest: FamilyQuest
+    let familyProfile: FamilyProfile
+    let isSaving: Bool
+    let isDeleting: Bool
+    let onSaveAssignment: (QuestAssignment) async -> Void
+    let onDelete: () async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var assignmentChoice: QuestAssignmentChoice
+    @State private var selectedHeroID: String?
+    @State private var isShowingDeleteConfirmation = false
+
+    init(
+        quest: FamilyQuest,
+        familyProfile: FamilyProfile,
+        isSaving: Bool,
+        isDeleting: Bool,
+        onSaveAssignment: @escaping (QuestAssignment) async -> Void,
+        onDelete: @escaping () async -> Void
+    ) {
+        self.quest = quest
+        self.familyProfile = familyProfile
+        self.isSaving = isSaving
+        self.isDeleting = isDeleting
+        self.onSaveAssignment = onSaveAssignment
+        self.onDelete = onDelete
+
+        switch quest.assignment {
+        case .unassigned:
+            _assignmentChoice = State(initialValue: .unassigned)
+            _selectedHeroID = State(initialValue: nil)
+        case .everyone:
+            _assignmentChoice = State(initialValue: .everyone)
+            _selectedHeroID = State(initialValue: nil)
+        case .hero(let hero):
+            _assignmentChoice = State(initialValue: .specificHero)
+            _selectedHeroID = State(initialValue: hero.id)
+        }
+    }
+
+    private var resolvedAssignment: QuestAssignment? {
+        switch assignmentChoice {
+        case .unassigned:
+            return .unassigned
+        case .everyone:
+            return .everyone
+        case .specificHero:
+            guard let selectedHeroID, let hero = familyProfile.heroes.first(where: { $0.id == selectedHeroID }) else {
+                return nil
+            }
+            return .hero(hero)
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            ChoreQuestColors.background.ignoresSafeArea()
+            QuestBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .top) {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(ChoreQuestColors.primaryFixed)
+                                    .frame(width: 64, height: 64)
+                                    .overlay {
+                                        Image(systemName: quest.category.iconName)
+                                            .font(.system(size: 24, weight: .bold))
+                                            .foregroundStyle(ChoreQuestColors.primary)
+                                    }
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(quest.title)
+                                        .font(.custom("Quicksand", size: 24).weight(.bold))
+                                        .foregroundStyle(ChoreQuestColors.onSurface)
+
+                                    Text(quest.details)
+                                        .font(.custom("Quicksand", size: 15).weight(.medium))
+                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                                }
+                            }
+
+                            HStack(spacing: 10) {
+                                detailPill(quest.category.title, background: ChoreQuestColors.surfaceContainerLow, foreground: ChoreQuestColors.primary)
+                                detailPill(quest.frequency.title, background: ChoreQuestColors.tertiaryFixed, foreground: ChoreQuestColors.tertiaryText)
+                                detailPill("\(quest.xpValue) XP", background: ChoreQuestColors.secondary, foreground: ChoreQuestColors.secondaryText)
+                            }
+                        }
+                    }
+
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Reassign Quest")
+                                .font(.custom("Quicksand", size: 22).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
+
+                            HStack(spacing: 10) {
+                                ForEach(QuestAssignmentChoice.allCases) { choice in
+                                    Button {
+                                        assignmentChoice = choice
+                                        if choice == .specificHero, selectedHeroID == nil {
+                                            selectedHeroID = familyProfile.heroes.first?.id
+                                        }
+                                    } label: {
+                                        Text(choice.title)
+                                            .font(.custom("Quicksand", size: 13).weight(.bold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(assignmentChoice == choice ? ChoreQuestColors.primary : ChoreQuestColors.surfaceContainerHigh)
+                                            .foregroundStyle(assignmentChoice == choice ? .white : ChoreQuestColors.onSurfaceVariant)
+                                            .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+
+                            if assignmentChoice == .specificHero {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 14) {
+                                        ForEach(familyProfile.heroes) { hero in
+                                            Button {
+                                                selectedHeroID = hero.id
+                                            } label: {
+                                                VStack(spacing: 10) {
+                                                    QuestProfileAvatar(
+                                                        imageBase64: hero.imageBase64,
+                                                        fallbackIconName: hero.avatarIconName,
+                                                        fallbackColorHex: hero.avatarColorHex,
+                                                        size: 72,
+                                                        borderColor: selectedHeroID == hero.id ? ChoreQuestColors.secondary : ChoreQuestColors.surfaceContainerLowest
+                                                    )
+
+                                                    Text(hero.name)
+                                                        .font(.custom("Quicksand", size: 13).weight(.bold))
+                                                        .foregroundStyle(ChoreQuestColors.onSurface)
+                                                        .lineLimit(1)
+                                                }
+                                                .padding(8)
+                                                .background(selectedHeroID == hero.id ? ChoreQuestColors.surfaceContainerLow : Color.clear)
+                                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Remove Quest")
+                                .font(.custom("Quicksand", size: 22).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
+
+                            Text("Deleting this quest removes it from the family board. Existing submission history stays visible where it already exists.")
+                                .font(.custom("Quicksand", size: 14).weight(.medium))
+                                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+                            Button(role: .destructive) {
+                                isShowingDeleteConfirmation = true
+                            } label: {
+                                HStack {
+                                    if isDeleting {
+                                        ProgressView()
+                                            .tint(ChoreQuestColors.errorText)
+                                    } else {
+                                        Image(systemName: "trash")
+                                    }
+                                    Text(isDeleting ? "Removing..." : "Remove Quest")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(ParentOutlinePillStyle())
+                            .disabled(isSaving || isDeleting)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 120)
+            }
+        }
+        .navigationTitle("Quest Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Close") {
+                    dismiss()
+                }
+                .disabled(isSaving || isDeleting)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                guard let resolvedAssignment else { return }
+                Task { await onSaveAssignment(resolvedAssignment) }
+            } label: {
+                HStack(spacing: 10) {
+                    if isSaving {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Save Assignment")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(QuestPrimaryButtonStyle())
+            .disabled(resolvedAssignment == nil || isSaving || isDeleting)
+            .opacity((resolvedAssignment != nil && !isSaving && !isDeleting) ? 1 : 0.55)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.ultraThinMaterial)
+        }
+        .alert("Remove Quest?", isPresented: $isShowingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive) {
+                Task { await onDelete() }
+            }
+        } message: {
+            Text("This will remove \(quest.title) from the family quest board.")
+        }
+    }
+
+    private func detailPill(_ title: String, background: Color, foreground: Color) -> some View {
+        Text(title)
+            .font(.custom("Quicksand", size: 12).weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(background)
+            .foregroundStyle(foreground)
+            .clipShape(Capsule())
     }
 }
 

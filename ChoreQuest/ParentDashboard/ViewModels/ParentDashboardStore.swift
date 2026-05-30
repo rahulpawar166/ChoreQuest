@@ -18,6 +18,7 @@ final class ParentDashboardStore: ObservableObject {
     @Published private(set) var pendingApprovals: [ParentApproval] = []
     @Published private(set) var isLoadingQuests = false
     @Published private(set) var isSavingQuest = false
+    @Published private(set) var deletingQuestID: String?
     @Published private(set) var isUpdatingApproval = false
     @Published private(set) var isSavingReward = false
     @Published private(set) var deletingRewardID: String?
@@ -71,6 +72,42 @@ final class ParentDashboardStore: ObservableObject {
             return true
         } catch {
             errorMessage = "We couldn't save this quest right now."
+            return false
+        }
+    }
+
+    func updateQuestAssignment(_ quest: FamilyQuest, assignment: QuestAssignment, heroes: [HeroProfile]) async -> Bool {
+        isSavingQuest = true
+        errorMessage = nil
+        defer { isSavingQuest = false }
+
+        do {
+            try await questService.updateQuestAssignment(
+                familyID: quest.familyID,
+                questID: quest.id,
+                assignment: assignment
+            )
+            quests = try await questService.loadQuests(familyID: quest.familyID, heroes: heroes)
+            rebuildApprovals()
+            return true
+        } catch {
+            errorMessage = "We couldn't update this quest right now."
+            return false
+        }
+    }
+
+    func deleteQuest(_ quest: FamilyQuest, heroes: [HeroProfile]) async -> Bool {
+        deletingQuestID = quest.id
+        errorMessage = nil
+        defer { deletingQuestID = nil }
+
+        do {
+            try await questService.deleteQuest(familyID: quest.familyID, questID: quest.id)
+            quests = try await questService.loadQuests(familyID: quest.familyID, heroes: heroes)
+            rebuildApprovals()
+            return true
+        } catch {
+            errorMessage = "We couldn't remove this quest right now."
             return false
         }
     }

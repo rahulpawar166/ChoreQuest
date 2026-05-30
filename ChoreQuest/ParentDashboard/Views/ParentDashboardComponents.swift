@@ -143,9 +143,11 @@ struct ParentStatCard: View {
 struct ParentQuestRow: View {
     let quest: FamilyQuest
     let isAwaitingApproval: Bool
+    let onTap: () -> Void
 
     var body: some View {
-        ParentSurfaceCard {
+        Button(action: onTap) {
+            ParentSurfaceCard {
             HStack(alignment: .top, spacing: 16) {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(iconBackground)
@@ -193,6 +195,8 @@ struct ParentQuestRow: View {
                 }
             }
         }
+        }
+        .buttonStyle(.plain)
     }
 
     private var recurringPill: some View {

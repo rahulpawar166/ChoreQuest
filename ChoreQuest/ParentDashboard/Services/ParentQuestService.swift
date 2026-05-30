@@ -71,6 +71,28 @@ final class ParentQuestService {
             ], merge: true)
     }
 
+    func updateQuestAssignment(familyID: String, questID: String, assignment: QuestAssignment) async throws {
+        let assignmentData = assignmentDictionary(from: assignment)
+
+        try await db.collection("families")
+            .document(familyID)
+            .collection("quests")
+            .document(questID)
+            .setQuestDataAsync([
+                "assignmentMode": assignmentData.mode,
+                "assignedHeroID": assignmentData.heroID as Any,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+    }
+
+    func deleteQuest(familyID: String, questID: String) async throws {
+        try await db.collection("families")
+            .document(familyID)
+            .collection("quests")
+            .document(questID)
+            .deleteQuestAsync()
+    }
+
     private func quest(from document: QueryDocumentSnapshot, familyID: String, heroes: [HeroProfile]) -> FamilyQuest? {
         let data = document.data()
 
@@ -149,6 +171,18 @@ private extension DocumentReference {
     func setQuestDataAsync(_ data: [String: Any], merge: Bool) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             setData(data, merge: merge) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    func deleteQuestAsync() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            delete { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
