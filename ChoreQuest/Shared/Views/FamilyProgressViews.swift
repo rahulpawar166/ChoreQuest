@@ -8,59 +8,77 @@
 import SwiftUI
 
 struct FamilyRewardProgressCard: View {
-    let progress: FamilyRewardProgress
+    let progress: FamilyRewardProgress?
 
     var body: some View {
         ParentSurfaceCard {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 12) {
-                    Circle()
-                        .fill(ChoreQuestColors.secondary)
-                        .frame(width: 52, height: 52)
-                        .overlay {
-                            Image(systemName: "party.popper.fill")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(ChoreQuestColors.secondaryText)
+            if let progress {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .center, spacing: 12) {
+                        Circle()
+                            .fill(ChoreQuestColors.secondary)
+                            .frame(width: 52, height: 52)
+                            .overlay {
+                                Image(systemName: "party.popper.fill")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundStyle(ChoreQuestColors.secondaryText)
+                            }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Family Reward: \(progress.title)")
+                                .font(.custom("Quicksand", size: 20).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
+
+                            Text("Team Goal: \(progress.goalXP) XP")
+                                .font(.custom("Quicksand", size: 12).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                         }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Family Reward: \(progress.title)")
-                            .font(.custom("Quicksand", size: 20).weight(.bold))
-                            .foregroundStyle(ChoreQuestColors.onSurface)
+                        Spacer()
 
-                        Text("Team Goal: \(progress.goalXP) XP")
-                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        Text("\(progress.currentXP) / \(progress.goalXP)")
+                            .font(.custom("Quicksand", size: 14).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.primary)
                     }
 
-                    Spacer()
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(ChoreQuestColors.surfaceContainer)
 
-                    Text("\(progress.currentXP) / \(progress.goalXP)")
-                        .font(.custom("Quicksand", size: 14).weight(.bold))
-                        .foregroundStyle(ChoreQuestColors.primary)
-                }
-
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(ChoreQuestColors.surfaceContainer)
-
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [ChoreQuestColors.primary, ChoreQuestColors.primaryContainer],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [ChoreQuestColors.primary, ChoreQuestColors.primaryContainer],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .frame(width: max(geometry.size.width * progress.progress, 10))
+                                .frame(width: max(geometry.size.width * progress.progress, 10))
+                        }
                     }
-                }
-                .frame(height: 16)
+                    .frame(height: 16)
 
-                Text(progress.remainingXP == 0 ? "Reward unlocked. Time to celebrate." : "Just \(progress.remainingXP) more XP to unlock the reward.")
-                    .font(.custom("Quicksand", size: 13).weight(.medium))
-                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    Text(progress.remainingXP == 0 ? "Reward unlocked. Time to celebrate." : "Just \(progress.remainingXP) more XP to unlock the reward.")
+                        .font(.custom("Quicksand", size: 13).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "party.popper")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(ChoreQuestColors.primary)
+
+                    Text("No family reward set")
+                        .font(.custom("Quicksand", size: 20).weight(.bold))
+                        .foregroundStyle(ChoreQuestColors.onSurface)
+
+                    Text("A parent can create a team reward and goal XP for the whole family.")
+                        .font(.custom("Quicksand", size: 14).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 8)
             }
         }
     }

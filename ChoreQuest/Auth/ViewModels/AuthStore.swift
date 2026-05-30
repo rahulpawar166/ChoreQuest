@@ -299,6 +299,42 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    func updateFamilyReward(title: String, goalXP: Int) async -> Bool {
+        guard let familyID = familyProfile?.id else { return false }
+
+        setLoading(true, message: "Saving family reward...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            familyProfile = try await sessionService.updateFamilyReward(
+                familyID: familyID,
+                title: title,
+                goalXP: goalXP
+            )
+            return true
+        } catch {
+            errorMessage = "We couldn't save the family reward right now."
+            return false
+        }
+    }
+
+    func clearFamilyReward() async -> Bool {
+        guard let familyID = familyProfile?.id else { return false }
+
+        setLoading(true, message: "Removing family reward...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            familyProfile = try await sessionService.clearFamilyReward(familyID: familyID)
+            return true
+        } catch {
+            errorMessage = "We couldn't remove the family reward right now."
+            return false
+        }
+    }
+
     private func route(for userProfile: UserProfile?, familyProfile: FamilyProfile?) -> AppRoute {
         guard let userProfile else {
             return .auth

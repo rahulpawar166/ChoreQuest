@@ -10,7 +10,13 @@ struct FamilyProfile {
     let familyName: String
     let crestName: String
     let parentImageBase64: String?
+    let familyReward: FamilyGoalReward?
     let heroes: [HeroProfile]
+}
+
+struct FamilyGoalReward: Hashable {
+    let title: String
+    let goalXP: Int
 }
 
 struct HeroProfile: Identifiable, Hashable {

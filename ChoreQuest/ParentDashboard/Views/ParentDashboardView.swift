@@ -14,6 +14,7 @@ struct ParentDashboardView: View {
     @State private var selectedTab: ParentDashboardTab = .quests
     @State private var selectedHistorySnapshot: HeroHistorySnapshot?
     @State private var isPresentingFamilyEditor = false
+    @State private var isPresentingFamilyRewardEditor = false
     @State private var selectedHeroForEditing: HeroProfile?
     private var snapshot: ParentDashboardSnapshot? {
         authStore.familyProfile.map { familyProfile in
@@ -202,6 +203,16 @@ struct ParentDashboardView: View {
                     avatar: avatar,
                     imageData: imageData
                 )
+            }
+        }
+        .sheet(isPresented: $isPresentingFamilyRewardEditor) {
+            FamilyRewardEditorView(
+                currentReward: authStore.familyProfile?.familyReward,
+                isSaving: authStore.isLoading
+            ) { title, goalXP in
+                await authStore.updateFamilyReward(title: title, goalXP: goalXP)
+            } onDelete: {
+                await authStore.clearFamilyReward()
             }
         }
     }
@@ -487,9 +498,18 @@ struct ParentDashboardView: View {
                 }
             }
 
-            ParentSectionHeader(title: "Your Heroes", actionTitle: nil, action: nil)
+            VStack(spacing: 16) {
+                ParentSectionHeader(
+                    title: "Family-Wide Reward",
+                    actionTitle: snapshot.familyProgress.rewardProgress == nil ? "Create Reward" : "Edit Reward"
+                ) {
+                    isPresentingFamilyRewardEditor = true
+                }
 
-            FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
+                FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
+            }
+
+            ParentSectionHeader(title: "Your Heroes", actionTitle: nil, action: nil)
 
             HallOfHeroesSection(entries: snapshot.familyProgress.leaderboard)
 

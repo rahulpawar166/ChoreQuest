@@ -89,10 +89,6 @@ struct KidDashboardView: View {
                 }
 
                 Menu {
-                    Button("History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90") {
-                        isPresentingHistory = true
-                    }
-
                     Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
                         Task {
                             await authStore.clearSelectedRole()

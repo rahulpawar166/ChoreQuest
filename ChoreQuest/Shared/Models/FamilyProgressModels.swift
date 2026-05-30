@@ -8,12 +8,12 @@
 import Foundation
 
 struct FamilyProgressSnapshot {
-    let rewardProgress: FamilyRewardProgress
+    let rewardProgress: FamilyRewardProgress?
     let leaderboard: [FamilyLeaderboardEntry]
     let availableXPByHeroID: [String: Int]
 
     static let empty = FamilyProgressSnapshot(
-        rewardProgress: FamilyRewardProgress(title: "Pizza Night", currentXP: 0, goalXP: 5000),
+        rewardProgress: nil,
         leaderboard: [],
         availableXPByHeroID: [:]
     )
@@ -70,7 +70,9 @@ struct FamilyProgressSnapshot {
         let familyXP = leaderboard.reduce(0) { $0 + $1.totalXP }
 
         return FamilyProgressSnapshot(
-            rewardProgress: FamilyRewardProgress(title: "Pizza Night", currentXP: familyXP, goalXP: 5000),
+            rewardProgress: familyProfile.familyReward.map {
+                FamilyRewardProgress(title: $0.title, currentXP: familyXP, goalXP: $0.goalXP)
+            },
             leaderboard: leaderboard,
             availableXPByHeroID: availableXPByHeroID
         )

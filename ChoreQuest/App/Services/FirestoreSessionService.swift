@@ -73,6 +73,7 @@ final class FirestoreSessionService {
             familyName: trimmedFamilyName,
             crestName: draft.crestName,
             parentImageBase64: draft.parentImageData?.base64EncodedString(),
+            familyReward: nil,
             heroes: heroes
         )
 
@@ -124,6 +125,7 @@ final class FirestoreSessionService {
             familyName: familyName,
             crestName: crestName,
             parentImageBase64: parentImageData?.base64EncodedString(),
+            familyReward: nil,
             heroes: []
         )
     }
@@ -161,6 +163,42 @@ final class FirestoreSessionService {
         return familyProfileFromSnapshot(updatedSnapshot, familyID: familyID)
     }
 
+    func updateFamilyReward(
+        familyID: String,
+        title: String,
+        goalXP: Int
+    ) async throws -> FamilyProfile {
+        let data: [String: Any] = [
+            "familyReward": [
+                "title": title.trimmingCharacters(in: .whitespacesAndNewlines),
+                "goalXP": goalXP
+            ],
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+
+        try await db.collection("families").document(familyID).setDataAsync(data, merge: true)
+        let snapshot = try await db.collection("families").document(familyID).getDocumentAsync()
+        return familyProfileFromSnapshot(snapshot, familyID: familyID) ?? FamilyProfile(
+            id: familyID,
+            familyName: "",
+            crestName: "Castle Crest",
+            parentImageBase64: nil,
+            familyReward: FamilyGoalReward(title: title, goalXP: goalXP),
+            heroes: []
+        )
+    }
+
+    func clearFamilyReward(familyID: String) async throws -> FamilyProfile? {
+        let data: [String: Any] = [
+            "familyReward": NSNull(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+
+        try await db.collection("families").document(familyID).setDataAsync(data, merge: true)
+        let snapshot = try await db.collection("families").document(familyID).getDocumentAsync()
+        return familyProfileFromSnapshot(snapshot, familyID: familyID)
+    }
+
     private func userProfileFromSnapshot(_ snapshot: DocumentSnapshot, userID: String, email: String?) -> UserProfile {
         let data = snapshot.data() ?? [:]
         let selectedRole = AppRole(rawValue: data["selectedRole"] as? String ?? "")
@@ -187,8 +225,21 @@ final class FirestoreSessionService {
             familyName: data["familyName"] as? String ?? "",
             crestName: data["crestName"] as? String ?? "Castle Crest",
             parentImageBase64: data["parentImageBase64"] as? String,
+            familyReward: familyRewardFromDictionary(data["familyReward"] as? [String: Any]),
             heroes: heroes
         )
+    }
+
+    private func familyRewardFromDictionary(_ data: [String: Any]?) -> FamilyGoalReward? {
+        guard
+            let data,
+            let title = data["title"] as? String,
+            let goalXP = data["goalXP"] as? Int
+        else {
+            return nil
+        }
+
+        return FamilyGoalReward(title: title, goalXP: goalXP)
     }
 
     private func heroProfileFromDraft(_ draft: HeroProfileDraft) -> HeroProfile {

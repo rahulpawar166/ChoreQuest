@@ -219,3 +219,125 @@ private extension Data {
         return Data(base64Encoded: value)
     }
 }
+
+struct FamilyRewardEditorView: View {
+    let currentReward: FamilyGoalReward?
+    let isSaving: Bool
+    let onSave: (String, Int) async -> Bool
+    let onDelete: (() async -> Bool)?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var goalXP: Double
+
+    init(
+        currentReward: FamilyGoalReward?,
+        isSaving: Bool,
+        onSave: @escaping (String, Int) async -> Bool,
+        onDelete: (() async -> Bool)? = nil
+    ) {
+        self.currentReward = currentReward
+        self.isSaving = isSaving
+        self.onSave = onSave
+        self.onDelete = onDelete
+        _title = State(initialValue: currentReward?.title ?? "")
+        _goalXP = State(initialValue: Double(currentReward?.goalXP ?? 500))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ChoreQuestColors.background.ignoresSafeArea()
+                QuestBackground()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        ParentSurfaceCard {
+                            VStack(alignment: .leading, spacing: 18) {
+                                Text("Family-Wide Reward")
+                                    .font(.custom("Quicksand", size: 24).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                                QuestTextField(
+                                    title: "REWARD TITLE",
+                                    placeholder: "Pizza Night",
+                                    systemImage: "party.popper.fill",
+                                    text: $title,
+                                    keyboardType: .default,
+                                    contentType: .nickname
+                                )
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("TEAM GOAL")
+                                        .font(.custom("Quicksand", size: 12).weight(.bold))
+                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+                                    HStack {
+                                        Slider(value: $goalXP, in: 100...5000, step: 50)
+                                            .tint(ChoreQuestColors.primary)
+
+                                        Text("\(Int(goalXP)) XP")
+                                            .font(.custom("Quicksand", size: 14).weight(.bold))
+                                            .foregroundStyle(ChoreQuestColors.primary)
+                                    }
+                                }
+
+                                if onDelete != nil, currentReward != nil {
+                                    Button(role: .destructive) {
+                                        Task {
+                                            let didDelete = await onDelete?() ?? false
+                                            if didDelete { dismiss() }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            if isSaving {
+                                                ProgressView()
+                                                    .controlSize(.small)
+                                            } else {
+                                                Image(systemName: "trash")
+                                            }
+                                            Text(isSaving ? "Removing..." : "Delete Family Reward")
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(ParentOutlinePillStyle())
+                                    .disabled(isSaving)
+                                }
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle(currentReward == nil ? "Create Family Reward" : "Edit Family Reward")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Close") { dismiss() }
+                        .disabled(isSaving)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            let didSave = await onSave(
+                                title.trimmingCharacters(in: .whitespacesAndNewlines),
+                                Int(goalXP)
+                            )
+                            if didSave { dismiss() }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isSaving {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(isSaving ? "Saving..." : "Save")
+                        }
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
+                }
+            }
+        }
+    }
+}
