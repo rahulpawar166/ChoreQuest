@@ -12,6 +12,7 @@ struct KidDashboardView: View {
     @StateObject private var store = KidDashboardStore()
     @State private var submissionQuest: FamilyQuest?
     @State private var isPresentingHistory = false
+    @State private var selectedHeroForEditing: HeroProfile?
 
     private var familyProfile: FamilyProfile? {
         authStore.familyProfile
@@ -63,13 +64,18 @@ struct KidDashboardView: View {
         .toolbar {
             if let snapshot {
                 ToolbarItem(placement: .topBarLeading) {
-                    QuestProfileAvatar(
-                        imageBase64: snapshot.hero.imageBase64,
-                        fallbackIconName: snapshot.hero.avatarIconName,
-                        fallbackColorHex: snapshot.hero.avatarColorHex,
-                        size: 34,
-                        borderColor: ChoreQuestColors.primaryFixed
-                    )
+                    Button {
+                        selectedHeroForEditing = snapshot.hero
+                    } label: {
+                        QuestProfileAvatar(
+                            imageBase64: snapshot.hero.imageBase64,
+                            fallbackIconName: snapshot.hero.avatarIconName,
+                            fallbackColorHex: snapshot.hero.avatarColorHex,
+                            size: 34,
+                            borderColor: ChoreQuestColors.primaryFixed
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -150,6 +156,19 @@ struct KidDashboardView: View {
                 }
             }
         }
+        .sheet(item: $selectedHeroForEditing) { hero in
+            HeroProfileEditorView(
+                hero: hero,
+                isSaving: authStore.isLoading
+            ) { name, avatar, imageData in
+                await authStore.updateHeroProfile(
+                    heroID: hero.id,
+                    name: name,
+                    avatar: avatar,
+                    imageData: imageData
+                )
+            }
+        }
     }
 
     private func heroHeader(snapshot: KidDashboardSnapshot) -> some View {
@@ -178,7 +197,7 @@ struct KidDashboardView: View {
                     }
                 }
 
-                Text("Quest progress, proof uploads, and rewards will build on top of these Firestore quests.")
+                Text("Tap your hero token to edit your profile. Quest progress, proof uploads, and rewards build on top of these Firestore quests.")
                     .font(.custom("Quicksand", size: 14).weight(.medium))
                     .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
 
@@ -328,7 +347,21 @@ struct KidDashboardView: View {
 
     private func availableRewardsSection(snapshot: KidDashboardSnapshot, familyProfile: FamilyProfile) -> some View {
         VStack(spacing: 16) {
-            ParentSectionHeader(title: "Available Rewards", actionTitle: nil, action: nil)
+            HStack {
+                Text("Available Rewards")
+                    .font(.custom("Quicksand", size: 22).weight(.bold))
+                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                Text("\(snapshot.rewards.count)")
+                    .font(.custom("Quicksand", size: 12).weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(ChoreQuestColors.surfaceContainerLow)
+                    .foregroundStyle(ChoreQuestColors.primary)
+                    .clipShape(Capsule())
+
+                Spacer()
+            }
 
             if snapshot.rewards.isEmpty {
                 KidDashboardEmptyCard(
@@ -337,26 +370,23 @@ struct KidDashboardView: View {
                     message: "Ask a parent to add a few rewards so heroes can spend XP."
                 )
             } else {
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 14),
-                        GridItem(.flexible(), spacing: 14)
-                    ],
-                    spacing: 14
-                ) {
-                    ForEach(snapshot.rewards) { reward in
-                        KidRewardCard(
-                            reward: reward,
-                            availableXP: snapshot.heroXP,
-                            latestClaim: snapshot.rewardClaims.first(where: { $0.rewardID == reward.id && $0.status == .claimed }),
-                            isClaiming: store.isClaimingReward
-                        ) {
-                            await store.claimReward(
-                                reward,
-                                hero: snapshot.hero,
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(snapshot.rewards) { reward in
+                            KidRewardCard(
+                                reward: reward,
                                 availableXP: snapshot.heroXP,
-                                familyID: familyProfile.id
-                            )
+                                latestClaim: snapshot.rewardClaims.first(where: { $0.rewardID == reward.id && $0.status == .claimed }),
+                                isClaiming: store.isClaimingReward
+                            ) {
+                                await store.claimReward(
+                                    reward,
+                                    hero: snapshot.hero,
+                                    availableXP: snapshot.heroXP,
+                                    familyID: familyProfile.id
+                                )
+                            }
+                            .frame(width: 312)
                         }
                     }
                 }

@@ -216,7 +216,7 @@ struct FamilyIdentityView: View {
     }
 }
 
-private struct CrestPicker: View {
+struct CrestPicker: View {
     @Binding var crestName: String
 
     private let options = ["Castle Crest", "Star Banner", "Leaf Shield", "Lightning Flag"]

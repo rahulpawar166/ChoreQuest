@@ -247,6 +247,58 @@ final class AuthStore: ObservableObject {
         setLoading(false)
     }
 
+    func updateFamilyProfile(
+        familyName: String,
+        crestName: String,
+        parentImageData: Data?
+    ) async -> Bool {
+        guard let familyID = familyProfile?.id else { return false }
+
+        setLoading(true, message: "Saving family profile...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            familyProfile = try await sessionService.updateFamilyProfile(
+                familyID: familyID,
+                familyName: familyName,
+                crestName: crestName,
+                parentImageData: parentImageData
+            )
+            return true
+        } catch {
+            errorMessage = "We couldn't save the family profile right now."
+            return false
+        }
+    }
+
+    func updateHeroProfile(
+        heroID: String,
+        name: String,
+        avatar: AvatarOption,
+        imageData: Data?
+    ) async -> Bool {
+        guard let familyID = familyProfile?.id else { return false }
+
+        setLoading(true, message: "Saving hero profile...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            familyProfile = try await sessionService.updateHeroProfile(
+                familyID: familyID,
+                heroID: heroID,
+                name: name,
+                avatar: avatar,
+                imageData: imageData
+            )
+            return familyProfile != nil
+        } catch {
+            errorMessage = "We couldn't save this hero profile right now."
+            return false
+        }
+    }
+
     private func route(for userProfile: UserProfile?, familyProfile: FamilyProfile?) -> AppRoute {
         guard let userProfile else {
             return .auth

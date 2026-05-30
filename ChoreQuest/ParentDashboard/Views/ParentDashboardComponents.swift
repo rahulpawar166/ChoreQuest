@@ -423,35 +423,39 @@ struct ParentApprovalCard: View {
 
 struct ParentHeroCard: View {
     let hero: ParentHeroSummary
+    let onEditProfile: () -> Void
     let onViewHistory: () -> Void
 
     var body: some View {
         ParentSurfaceCard {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top) {
-                    HStack(spacing: 14) {
-                        QuestProfileAvatar(
-                            imageBase64: hero.imageBase64,
-                            fallbackIconName: hero.avatarIconName,
-                            fallbackColorHex: hero.avatarColorHex,
-                            size: 62,
-                            borderColor: ChoreQuestColors.primaryFixed
-                        )
+                    Button(action: onEditProfile) {
+                        HStack(spacing: 14) {
+                            QuestProfileAvatar(
+                                imageBase64: hero.imageBase64,
+                                fallbackIconName: hero.avatarIconName,
+                                fallbackColorHex: hero.avatarColorHex,
+                                size: 62,
+                                borderColor: ChoreQuestColors.primaryFixed
+                            )
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(hero.name)
-                                .font(.custom("Quicksand", size: 20).weight(.bold))
-                                .foregroundStyle(ChoreQuestColors.onSurface)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(hero.name)
+                                    .font(.custom("Quicksand", size: 20).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.onSurface)
 
-                            Text("LVL \(hero.levelValue)")
-                                .font(.custom("Quicksand", size: 11).weight(.bold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(ChoreQuestColors.secondary)
-                                .foregroundStyle(ChoreQuestColors.secondaryText)
-                                .clipShape(Capsule())
+                                Text("LVL \(hero.levelValue)")
+                                    .font(.custom("Quicksand", size: 11).weight(.bold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(ChoreQuestColors.secondary)
+                                    .foregroundStyle(ChoreQuestColors.secondaryText)
+                                    .clipShape(Capsule())
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
 
                     Spacer()
 
@@ -465,7 +469,7 @@ struct ParentHeroCard: View {
                 }
 
                 HStack(spacing: 12) {
-                    Text("Quest proof and reward claim history for this hero.")
+                    Text("Tap the avatar to edit this hero's profile.")
                         .font(.custom("Quicksand", size: 14).weight(.medium))
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
 

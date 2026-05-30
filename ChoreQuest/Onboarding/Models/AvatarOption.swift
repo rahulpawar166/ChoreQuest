@@ -14,13 +14,15 @@ struct AvatarOption: Identifiable, Hashable {
     let colorHex: UInt
 
     static let all: [AvatarOption] = [
-        AvatarOption(id: "fire-fox", name: "Fire Fox", iconName: "flame.fill", colorHex: 0xf97316),
-        AvatarOption(id: "chill-panda", name: "Chill Panda", iconName: "moon.stars.fill", colorHex: 0x111827),
-        AvatarOption(id: "brave-leo", name: "Brave Leo", iconName: "sun.max.fill", colorHex: 0xf59e0b),
-        AvatarOption(id: "zen-koala", name: "Zen Koala", iconName: "cloud.fill", colorHex: 0x94a3b8),
-        AvatarOption(id: "dino-dash", name: "Dino Dash", iconName: "bolt.fill", colorHex: 0x10b981),
-        AvatarOption(id: "star-horn", name: "Star Horn", iconName: "sparkles", colorHex: 0xec4899),
-        AvatarOption(id: "tigey", name: "Tigey", iconName: "star.fill", colorHex: 0xf97316),
-        AvatarOption(id: "hop-scout", name: "Hop Scout", iconName: "leaf.fill", colorHex: 0x8b5cf6)
+        AvatarOption(id: "swift-hare", name: "Swift Hare", iconName: "hare.fill", colorHex: 0xf97316),
+        AvatarOption(id: "steady-tortoise", name: "Steady Tortoise", iconName: "tortoise.fill", colorHex: 0x0f766e),
+        AvatarOption(id: "lucky-ladybug", name: "Lucky Ladybug", iconName: "ladybug.fill", colorHex: 0xdc2626),
+        AvatarOption(id: "playful-paw", name: "Playful Paw", iconName: "pawprint.fill", colorHex: 0x7c3aed),
+        AvatarOption(id: "brave-ant", name: "Brave Ant", iconName: "ant.fill", colorHex: 0x1f2937),
+        AvatarOption(id: "wave-fish", name: "Wave Fish", iconName: "fish.fill", colorHex: 0x2563eb)
     ]
+
+    static func avatar(for id: String) -> AvatarOption {
+        all.first(where: { $0.id == id }) ?? all[0]
+    }
 }

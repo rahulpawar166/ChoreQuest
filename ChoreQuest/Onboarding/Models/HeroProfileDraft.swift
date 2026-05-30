@@ -17,7 +17,7 @@ struct HeroProfileDraft: Identifiable, Hashable {
     init(
         id: UUID = UUID(),
         name: String = "",
-        avatar: AvatarOption = AvatarOption.all.first ?? AvatarOption(id: "default", name: "Default", iconName: "star.fill", colorHex: 0x630ed4),
+        avatar: AvatarOption = AvatarOption.all.first ?? AvatarOption(id: "swift-hare", name: "Swift Hare", iconName: "hare.fill", colorHex: 0xf97316),
         imageData: Data? = nil,
         levelTitle: String = "Level 1 Scout"
     ) {

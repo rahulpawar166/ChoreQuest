@@ -13,6 +13,8 @@ struct ParentDashboardView: View {
 
     @State private var selectedTab: ParentDashboardTab = .quests
     @State private var selectedHistorySnapshot: HeroHistorySnapshot?
+    @State private var isPresentingFamilyEditor = false
+    @State private var selectedHeroForEditing: HeroProfile?
     private var snapshot: ParentDashboardSnapshot? {
         authStore.familyProfile.map { familyProfile in
             let familyProgress = FamilyProgressSnapshot.resolve(
@@ -107,13 +109,18 @@ struct ParentDashboardView: View {
         .toolbar {
             if let snapshot {
                 ToolbarItem(placement: .topBarLeading) {
-                    QuestProfileAvatar(
-                        imageBase64: snapshot.parentImageBase64,
-                        fallbackIconName: "crown.fill",
-                        fallbackColorHex: 0x630ed4,
-                        size: 34,
-                        borderColor: ChoreQuestColors.primaryFixed
-                    )
+                    Button {
+                        isPresentingFamilyEditor = true
+                    } label: {
+                        QuestProfileAvatar(
+                            imageBase64: snapshot.parentImageBase64,
+                            fallbackIconName: "crown.fill",
+                            fallbackColorHex: 0x630ed4,
+                            size: 34,
+                            borderColor: ChoreQuestColors.primaryFixed
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -168,6 +175,33 @@ struct ParentDashboardView: View {
         .sheet(item: $selectedHistorySnapshot) { snapshot in
             NavigationStack {
                 HeroHistoryView(snapshot: snapshot)
+            }
+        }
+        .sheet(isPresented: $isPresentingFamilyEditor) {
+            if let familyProfile = authStore.familyProfile {
+                FamilyProfileEditorView(
+                    familyProfile: familyProfile,
+                    isSaving: authStore.isLoading
+                ) { familyName, crestName, parentImageData in
+                    await authStore.updateFamilyProfile(
+                        familyName: familyName,
+                        crestName: crestName,
+                        parentImageData: parentImageData
+                    )
+                }
+            }
+        }
+        .sheet(item: $selectedHeroForEditing) { hero in
+            HeroProfileEditorView(
+                hero: hero,
+                isSaving: authStore.isLoading
+            ) { name, avatar, imageData in
+                await authStore.updateHeroProfile(
+                    heroID: hero.id,
+                    name: name,
+                    avatar: avatar,
+                    imageData: imageData
+                )
             }
         }
     }
@@ -410,7 +444,9 @@ struct ParentDashboardView: View {
                             .clipShape(Capsule())
                     }
 
-                    Button("Manage Family Squad") {}
+                    Button("Manage Family Squad") {
+                        isPresentingFamilyEditor = true
+                    }
                         .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
                 }
             }
@@ -479,7 +515,12 @@ struct ParentDashboardView: View {
             } else {
                 VStack(spacing: 16) {
                     ForEach(snapshot.heroes) { hero in
-                        ParentHeroCard(hero: hero) {
+                        ParentHeroCard(
+                            hero: hero,
+                            onEditProfile: {
+                                selectedHeroForEditing = authStore.familyProfile?.heroes.first(where: { $0.id == hero.id })
+                            }
+                        ) {
                             guard let familyProfile = authStore.familyProfile else { return }
                             selectedHistorySnapshot = HeroHistorySnapshot.resolve(
                                 familyProfile: familyProfile,

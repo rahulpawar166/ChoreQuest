@@ -6,8 +6,6 @@
 //
 
 import SwiftUI
-import UIKit
-
 struct HeroSetupView: View {
     let familyName: String
     @Binding var heroes: [HeroProfileDraft]
@@ -85,31 +83,7 @@ struct HeroSetupView: View {
 
     private var avatarSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Label("Choose an Avatar", systemImage: "sparkles")
-                    .font(.custom("Quicksand", size: 20).weight(.bold))
-                    .foregroundStyle(ChoreQuestColors.onSurface)
-
-                Spacer()
-
-                Text("\(AvatarOption.all.count) Options")
-                    .font(.custom("Quicksand", size: 12).weight(.bold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(ChoreQuestColors.secondary)
-                    .foregroundStyle(Color(hex: 0x6f5100))
-                    .clipShape(Capsule())
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(AvatarOption.all) { avatar in
-                    AvatarOptionCard(
-                        avatar: avatar,
-                        isSelected: selectedAvatar == avatar,
-                        action: { selectedAvatar = avatar }
-                    )
-                }
-            }
+            AvatarTokenPickerSection(title: "Choose an Animal Token", selectedAvatar: $selectedAvatar)
 
             QuestImagePickerCard(
                 title: "Or add a real hero photo",
@@ -262,52 +236,6 @@ struct HeroSetupView: View {
     }
 }
 
-private struct AvatarOptionCard: View {
-    let avatar: AvatarOption
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                ZStack(alignment: .topTrailing) {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(isSelected ? ChoreQuestColors.surfaceContainer : ChoreQuestColors.surfaceContainerLow)
-                        .frame(height: 88)
-                        .overlay {
-                            Image(systemName: avatar.iconName)
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundStyle(Color(hex: avatar.colorHex))
-                        }
-
-                    if isSelected {
-                        Circle()
-                            .fill(ChoreQuestColors.primary)
-                            .frame(width: 24, height: 24)
-                            .overlay {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
-                            .offset(x: 6, y: -6)
-                    }
-                }
-
-                Text(avatar.name)
-                    .font(.custom("Quicksand", size: 12).weight(.bold))
-                    .foregroundStyle(ChoreQuestColors.onSurface)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(6)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(isSelected ? ChoreQuestColors.primary : .clear, lineWidth: 3)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 private struct HeroRosterCard: View {
     let hero: HeroProfileDraft
 
@@ -343,21 +271,6 @@ private struct HeroRosterCard: View {
 
     @ViewBuilder
     private var heroPreview: some View {
-        if let imageData = hero.imageData, let uiImage = UIImage(data: imageData) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 58, height: 58)
-                .clipShape(Circle())
-        } else {
-            Circle()
-                .fill(Color(hex: hero.avatar.colorHex).opacity(0.14))
-                .frame(width: 58, height: 58)
-                .overlay {
-                    Image(systemName: hero.avatar.iconName)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(Color(hex: hero.avatar.colorHex))
-                }
-        }
+        HeroAvatarPreview(imageData: hero.imageData, avatar: hero.avatar, size: 58)
     }
 }

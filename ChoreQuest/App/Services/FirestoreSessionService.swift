@@ -104,6 +104,63 @@ final class FirestoreSessionService {
         try await db.collection("users").document(userID).setDataAsync(data, merge: true)
     }
 
+    func updateFamilyProfile(
+        familyID: String,
+        familyName: String,
+        crestName: String,
+        parentImageData: Data?
+    ) async throws -> FamilyProfile {
+        let data: [String: Any] = [
+            "familyName": familyName.trimmingCharacters(in: .whitespacesAndNewlines),
+            "crestName": crestName,
+            "parentImageBase64": parentImageData?.base64EncodedString() as Any,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+
+        try await db.collection("families").document(familyID).setDataAsync(data, merge: true)
+        let snapshot = try await db.collection("families").document(familyID).getDocumentAsync()
+        return familyProfileFromSnapshot(snapshot, familyID: familyID) ?? FamilyProfile(
+            id: familyID,
+            familyName: familyName,
+            crestName: crestName,
+            parentImageBase64: parentImageData?.base64EncodedString(),
+            heroes: []
+        )
+    }
+
+    func updateHeroProfile(
+        familyID: String,
+        heroID: String,
+        name: String,
+        avatar: AvatarOption,
+        imageData: Data?
+    ) async throws -> FamilyProfile? {
+        let reference = db.collection("families").document(familyID)
+        let snapshot = try await reference.getDocumentAsync()
+        guard var data = snapshot.data() else { return nil }
+
+        var heroes = data["heroes"] as? [[String: Any]] ?? []
+        heroes = heroes.map { hero in
+            guard (hero["id"] as? String) == heroID else { return hero }
+
+            var updated = hero
+            updated["name"] = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            updated["avatarID"] = avatar.id
+            updated["avatarName"] = avatar.name
+            updated["avatarIconName"] = avatar.iconName
+            updated["avatarColorHex"] = Int(avatar.colorHex)
+            updated["imageBase64"] = imageData?.base64EncodedString() as Any
+            return updated
+        }
+
+        data["heroes"] = heroes
+        data["updatedAt"] = FieldValue.serverTimestamp()
+
+        try await reference.setDataAsync(data, merge: true)
+        let updatedSnapshot = try await reference.getDocumentAsync()
+        return familyProfileFromSnapshot(updatedSnapshot, familyID: familyID)
+    }
+
     private func userProfileFromSnapshot(_ snapshot: DocumentSnapshot, userID: String, email: String?) -> UserProfile {
         let data = snapshot.data() ?? [:]
         let selectedRole = AppRole(rawValue: data["selectedRole"] as? String ?? "")
@@ -166,9 +223,9 @@ final class FirestoreSessionService {
         return HeroProfile(
             id: data["id"] as? String ?? UUID().uuidString,
             name: data["name"] as? String ?? "",
-            avatarID: data["avatarID"] as? String ?? "default",
-            avatarName: data["avatarName"] as? String ?? "Default",
-            avatarIconName: data["avatarIconName"] as? String ?? "star.fill",
+            avatarID: data["avatarID"] as? String ?? AvatarOption.all[0].id,
+            avatarName: data["avatarName"] as? String ?? AvatarOption.all[0].name,
+            avatarIconName: data["avatarIconName"] as? String ?? AvatarOption.all[0].iconName,
             avatarColorHex: UInt(colorValue),
             imageBase64: data["imageBase64"] as? String,
             levelTitle: data["levelTitle"] as? String ?? "Level 1 Scout"
