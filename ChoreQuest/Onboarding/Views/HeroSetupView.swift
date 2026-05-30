@@ -60,6 +60,13 @@ struct HeroSetupView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
+            Image("appIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 88, height: 88)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .shadow(color: ChoreQuestColors.primary.opacity(0.12), radius: 16, y: 8)
+
             Text("Summon a New Hero!")
                 .font(.custom("Quicksand", size: 32).weight(.bold))
                 .foregroundStyle(ChoreQuestColors.onSurface)

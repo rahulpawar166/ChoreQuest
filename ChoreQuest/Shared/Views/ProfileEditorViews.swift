@@ -11,20 +11,24 @@ struct FamilyProfileEditorView: View {
     let familyProfile: FamilyProfile
     let isSaving: Bool
     let onSave: (String, String, Data?) async -> Bool
+    let onAddHero: (String, AvatarOption, Data?) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var familyName: String
     @State private var crestName: String
     @State private var parentImageData: Data?
+    @State private var isPresentingAddHero = false
 
     init(
         familyProfile: FamilyProfile,
         isSaving: Bool,
-        onSave: @escaping (String, String, Data?) async -> Bool
+        onSave: @escaping (String, String, Data?) async -> Bool,
+        onAddHero: @escaping (String, AvatarOption, Data?) async -> Bool
     ) {
         self.familyProfile = familyProfile
         self.isSaving = isSaving
         self.onSave = onSave
+        self.onAddHero = onAddHero
         _familyName = State(initialValue: familyProfile.familyName)
         _crestName = State(initialValue: familyProfile.crestName)
         _parentImageData = State(initialValue: Data.decodeBase64(familyProfile.parentImageBase64))
@@ -70,6 +74,64 @@ struct FamilyProfileEditorView: View {
                                 }
                             }
                         }
+
+                        ParentSurfaceCard {
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Text("Kids")
+                                        .font(.custom("Quicksand", size: 24).weight(.bold))
+                                        .foregroundStyle(ChoreQuestColors.onSurface)
+
+                                    Spacer()
+
+                                    Button("Add Kid") {
+                                        isPresentingAddHero = true
+                                    }
+                                    .font(.custom("Quicksand", size: 14).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.primary)
+                                    .disabled(isSaving)
+                                }
+
+                                if familyProfile.heroes.isEmpty {
+                                    Text("No kids added yet.")
+                                        .font(.custom("Quicksand", size: 14).weight(.medium))
+                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                                } else {
+                                    VStack(spacing: 12) {
+                                        ForEach(familyProfile.heroes) { hero in
+                                            HStack(spacing: 12) {
+                                                QuestProfileAvatar(
+                                                    imageBase64: hero.imageBase64,
+                                                    fallbackIconName: hero.avatarIconName,
+                                                    fallbackColorHex: hero.avatarColorHex,
+                                                    size: 46,
+                                                    borderColor: ChoreQuestColors.primaryFixed
+                                                )
+
+                                                VStack(alignment: .leading, spacing: 3) {
+                                                    Text(hero.name)
+                                                        .font(.custom("Quicksand", size: 16).weight(.bold))
+                                                        .foregroundStyle(ChoreQuestColors.onSurface)
+                                                    Text(hero.levelTitle)
+                                                        .font(.custom("Quicksand", size: 12).weight(.medium))
+                                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                                                }
+
+                                                Spacer()
+
+                                                Text(hero.avatarName)
+                                                    .font(.custom("Quicksand", size: 11).weight(.bold))
+                                                    .padding(.horizontal, 10)
+                                                    .padding(.vertical, 6)
+                                                    .background(ChoreQuestColors.surfaceContainerLow)
+                                                    .foregroundStyle(ChoreQuestColors.primary)
+                                                    .clipShape(Capsule())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     .padding(20)
                 }
@@ -103,6 +165,11 @@ struct FamilyProfileEditorView: View {
                     }
                     .disabled(familyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
+            }
+        }
+        .sheet(isPresented: $isPresentingAddHero) {
+            AddHeroProfileView(isSaving: isSaving) { name, avatar, imageData in
+                await onAddHero(name, avatar, imageData)
             }
         }
     }
@@ -336,6 +403,87 @@ struct FamilyRewardEditorView: View {
                         }
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
+                }
+            }
+        }
+    }
+}
+
+struct AddHeroProfileView: View {
+    let isSaving: Bool
+    let onSave: (String, AvatarOption, Data?) async -> Bool
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var heroName = ""
+    @State private var selectedAvatar = AvatarOption.all[0]
+    @State private var imageData: Data?
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ChoreQuestColors.background.ignoresSafeArea()
+                QuestBackground()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        ParentSurfaceCard {
+                            VStack(alignment: .leading, spacing: 18) {
+                                Text("Add New Kid")
+                                    .font(.custom("Quicksand", size: 24).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                                QuestTextField(
+                                    title: "KID NAME",
+                                    placeholder: "Avery",
+                                    systemImage: "face.smiling.fill",
+                                    text: $heroName,
+                                    keyboardType: .default,
+                                    contentType: .nickname
+                                )
+
+                                AvatarTokenPickerSection(title: "Animal Token", selectedAvatar: $selectedAvatar)
+
+                                QuestImagePickerCard(
+                                    title: "Kid Photo",
+                                    subtitle: "Optional photo for this hero profile.",
+                                    fallbackSystemImage: "person.crop.circle.fill",
+                                    accentColor: ChoreQuestColors.primary,
+                                    imageData: $imageData
+                                )
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Add Kid")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Close") { dismiss() }
+                        .disabled(isSaving)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            let didSave = await onSave(
+                                heroName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                selectedAvatar,
+                                imageData
+                            )
+                            if didSave { dismiss() }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isSaving {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text(isSaving ? "Saving..." : "Save")
+                        }
+                    }
+                    .disabled(heroName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
             }
         }

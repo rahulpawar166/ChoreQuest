@@ -42,6 +42,13 @@ struct FamilyIdentityView: View {
 
     private var progressHeader: some View {
         VStack(spacing: 14) {
+            Image("appIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 88, height: 88)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .shadow(color: ChoreQuestColors.primary.opacity(0.12), radius: 16, y: 8)
+
             Label("SETUP IN PROGRESS", systemImage: "checkmark.shield.fill")
                 .font(.custom("Quicksand", size: 13).weight(.bold))
                 .foregroundStyle(Color(hex: 0x261a00))

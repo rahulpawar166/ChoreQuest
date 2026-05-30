@@ -199,6 +199,38 @@ final class FirestoreSessionService {
         return familyProfileFromSnapshot(snapshot, familyID: familyID)
     }
 
+    func addHeroProfile(
+        familyID: String,
+        name: String,
+        avatar: AvatarOption,
+        imageData: Data?
+    ) async throws -> FamilyProfile? {
+        let reference = db.collection("families").document(familyID)
+        let snapshot = try await reference.getDocumentAsync()
+        guard var data = snapshot.data() else { return nil }
+
+        var heroes = data["heroes"] as? [[String: Any]] ?? []
+        let nextLevel = "Level \(heroes.count + 1) Scout"
+        let newHero = HeroProfile(
+            id: UUID().uuidString,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            avatarID: avatar.id,
+            avatarName: avatar.name,
+            avatarIconName: avatar.iconName,
+            avatarColorHex: avatar.colorHex,
+            imageBase64: imageData?.base64EncodedString(),
+            levelTitle: nextLevel
+        )
+
+        heroes.append(heroDictionary(newHero))
+        data["heroes"] = heroes
+        data["updatedAt"] = FieldValue.serverTimestamp()
+
+        try await reference.setDataAsync(data, merge: true)
+        let updatedSnapshot = try await reference.getDocumentAsync()
+        return familyProfileFromSnapshot(updatedSnapshot, familyID: familyID)
+    }
+
     private func userProfileFromSnapshot(_ snapshot: DocumentSnapshot, userID: String, email: String?) -> UserProfile {
         let data = snapshot.data() ?? [:]
         let selectedRole = AppRole(rawValue: data["selectedRole"] as? String ?? "")

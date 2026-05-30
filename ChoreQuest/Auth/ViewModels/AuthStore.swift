@@ -335,6 +335,31 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    func addHeroProfile(
+        name: String,
+        avatar: AvatarOption,
+        imageData: Data?
+    ) async -> Bool {
+        guard let familyID = familyProfile?.id else { return false }
+
+        setLoading(true, message: "Adding new hero...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            familyProfile = try await sessionService.addHeroProfile(
+                familyID: familyID,
+                name: name,
+                avatar: avatar,
+                imageData: imageData
+            )
+            return familyProfile != nil
+        } catch {
+            errorMessage = "We couldn't add this hero right now."
+            return false
+        }
+    }
+
     private func route(for userProfile: UserProfile?, familyProfile: FamilyProfile?) -> AppRoute {
         guard let userProfile else {
             return .auth

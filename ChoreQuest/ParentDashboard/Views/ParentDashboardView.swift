@@ -189,6 +189,12 @@ struct ParentDashboardView: View {
                         crestName: crestName,
                         parentImageData: parentImageData
                     )
+                } onAddHero: { name, avatar, imageData in
+                    await authStore.addHeroProfile(
+                        name: name,
+                        avatar: avatar,
+                        imageData: imageData
+                    )
                 }
             }
         }

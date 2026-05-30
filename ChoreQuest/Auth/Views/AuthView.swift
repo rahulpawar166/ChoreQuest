@@ -67,16 +67,9 @@ struct AuthView: View {
                     .frame(width: 142, height: 142)
                     .blur(radius: 12)
 
-                Image(systemName: "shield.lefthalf.filled.badge.checkmark")
-                    .font(.system(size: 66, weight: .bold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [ChoreQuestColors.primaryContainer, ChoreQuestColors.primary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .symbolRenderingMode(.hierarchical)
+                Image("appIcon")
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 122, height: 122)
                     .background(
                         RoundedRectangle(cornerRadius: 34, style: .continuous)
