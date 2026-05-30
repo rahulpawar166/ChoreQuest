@@ -22,10 +22,14 @@ struct ParentDashboardSnapshot {
     let statCards: [ParentDashboardStat]
     let activeQuests: [FamilyQuest]
     let pendingApprovals: [ParentApproval]
+    let pendingRewardClaims: [RewardClaim]
+    let availableRewards: [FamilyReward]
+    let awaitingApprovalQuestIDs: Set<String>
+    let familyProgress: FamilyProgressSnapshot
     let heroes: [ParentHeroSummary]
     let familyStats: ParentFamilyStats
 
-    init(familyProfile: FamilyProfile, quests: [FamilyQuest], pendingApprovals: [ParentApproval] = []) {
+    init(familyProfile: FamilyProfile, quests: [FamilyQuest], pendingApprovals: [ParentApproval] = [], pendingRewardClaims: [RewardClaim] = [], availableRewards: [FamilyReward] = [], familyProgress: FamilyProgressSnapshot = .empty) {
         familyName = familyProfile.familyName
         crestName = familyProfile.crestName
         parentImageBase64 = familyProfile.parentImageBase64
@@ -44,6 +48,11 @@ struct ParentDashboardSnapshot {
 
         activeQuests = quests
         self.pendingApprovals = pendingApprovals
+        self.pendingRewardClaims = pendingRewardClaims
+        self.availableRewards = availableRewards
+        awaitingApprovalQuestIDs = Set(pendingApprovals.map(\.questID))
+        self.familyProgress = familyProgress
+        let notificationCount = pendingApprovals.count + pendingRewardClaims.count
 
         statCards = [
             ParentDashboardStat(
@@ -55,12 +64,12 @@ struct ParentDashboardSnapshot {
                 badgeText: nil
             ),
             ParentDashboardStat(
-                title: "Heroes Registered",
-                subtitle: "Kids added to this family from Firestore.",
-                value: "\(heroes.count)",
-                iconName: "person.2.fill",
+                title: "Pending Review",
+                subtitle: "Proofs and reward claims waiting for your decision.",
+                value: "\(notificationCount)",
+                iconName: "bell.badge.fill",
                 accentHex: 0xffc329,
-                badgeText: nil
+                badgeText: notificationCount == 0 ? nil : "\(notificationCount) New"
             )
         ]
 
@@ -118,6 +127,7 @@ enum ParentQuestStatus {
 
 struct ParentApproval: Identifiable {
     let id: String
+    let questID: String
     let hero: ParentAssignee
     let heroLevelTitle: String
     let choreTitle: String
@@ -125,6 +135,8 @@ struct ParentApproval: Identifiable {
     let xp: Int
     let iconName: String
     let accentHex: UInt
+    let proofImageBase64: String
+    let submittedAt: Date?
 }
 
 struct ParentAssignee {

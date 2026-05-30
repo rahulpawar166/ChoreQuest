@@ -13,6 +13,13 @@ struct KidDashboardSnapshot {
     let heroes: [HeroProfile]
     let assignedQuests: [FamilyQuest]
     let claimableQuests: [FamilyQuest]
+    let latestSubmissionByQuestID: [String: KidQuestSubmission]
+    let familyProgress: FamilyProgressSnapshot
+    let rewards: [FamilyReward]
+    let rewardClaims: [RewardClaim]
+    let heroXP: Int
+    let heroApprovedQuestCount: Int
+    let recentApprovedRewards: [KidQuestSubmission]
 
     var displayFamilyName: String {
         let trimmed = familyName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -27,7 +34,7 @@ struct KidDashboardSnapshot {
         claimableQuests.count
     }
 
-    static func resolve(from familyProfile: FamilyProfile, quests: [FamilyQuest], selectedHeroID: String?) -> KidDashboardSnapshot? {
+    static func resolve(from familyProfile: FamilyProfile, quests: [FamilyQuest], submissions: [KidQuestSubmission], rewards: [FamilyReward], claims: [RewardClaim], selectedHeroID: String?) -> KidDashboardSnapshot? {
         let hero = familyProfile.heroes.first(where: { $0.id == selectedHeroID }) ?? familyProfile.heroes.first
         guard let hero else {
             return nil
@@ -51,12 +58,40 @@ struct KidDashboardSnapshot {
             return false
         }
 
+        let latestSubmissionByQuestID = Dictionary(
+            uniqueKeysWithValues: submissions
+                .filter { $0.heroID == hero.id }
+                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+                .map { ($0.questID, $0) }
+        )
+
+        let familyProgress = FamilyProgressSnapshot.resolve(
+            familyProfile: familyProfile,
+            submissions: submissions,
+            quests: quests,
+            claims: claims
+        )
+
+        let heroEntry = familyProgress.leaderboard.first(where: { $0.id == hero.id })
+        let recentApprovedRewards = submissions
+            .filter { $0.heroID == hero.id && $0.status == .approved }
+            .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+            .prefix(3)
+            .map { $0 }
+
         return KidDashboardSnapshot(
             familyName: familyProfile.familyName,
             hero: hero,
             heroes: familyProfile.heroes,
             assignedQuests: assignedQuests,
-            claimableQuests: claimableQuests
+            claimableQuests: claimableQuests,
+            latestSubmissionByQuestID: latestSubmissionByQuestID,
+            familyProgress: familyProgress,
+            rewards: rewards.filter(\.isActive),
+            rewardClaims: claims.filter { $0.heroID == hero.id }.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) },
+            heroXP: heroEntry?.totalXP ?? 0,
+            heroApprovedQuestCount: heroEntry?.completedQuestCount ?? 0,
+            recentApprovedRewards: recentApprovedRewards
         )
     }
 }

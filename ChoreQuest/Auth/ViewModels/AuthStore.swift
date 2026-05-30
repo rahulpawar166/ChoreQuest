@@ -14,6 +14,7 @@ final class AuthStore: ObservableObject {
     @Published var route: AppRoute = .auth
     @Published var isSignedIn = false
     @Published var isLoading = false
+    @Published private(set) var loadingMessage: String?
     @Published var errorMessage: String?
     @Published private(set) var currentUserID: String?
     @Published private(set) var userProfile: UserProfile?
@@ -83,7 +84,7 @@ final class AuthStore: ObservableObject {
             return
         }
 
-        isLoading = true
+        setLoading(true, message: "Saving your family setup...")
         errorMessage = nil
 
         do {
@@ -97,7 +98,7 @@ final class AuthStore: ObservableObject {
             errorMessage = "We couldn't save your family setup right now."
         }
 
-        isLoading = false
+        setLoading(false)
     }
 
     func selectRole(_ role: AppRole) async {
@@ -106,7 +107,7 @@ final class AuthStore: ObservableObject {
             return
         }
 
-        isLoading = true
+        setLoading(true, message: "Switching to \(role == .parent ? "parent" : "kid") mode...")
         errorMessage = nil
 
         do {
@@ -126,7 +127,7 @@ final class AuthStore: ObservableObject {
             errorMessage = "We couldn't save this device role right now."
         }
 
-        isLoading = false
+        setLoading(false)
     }
 
     func clearSelectedRole() async {
@@ -135,7 +136,7 @@ final class AuthStore: ObservableObject {
             return
         }
 
-        isLoading = true
+        setLoading(true, message: "Switching profiles...")
         errorMessage = nil
 
         do {
@@ -155,7 +156,7 @@ final class AuthStore: ObservableObject {
             errorMessage = "We couldn't clear the saved device role right now."
         }
 
-        isLoading = false
+        setLoading(false)
     }
 
     private func authenticate(_ action: @escaping () async throws -> Void) async {
@@ -164,7 +165,7 @@ final class AuthStore: ObservableObject {
             return
         }
 
-        isLoading = true
+        setLoading(true, message: "Signing you in...")
         errorMessage = nil
 
         do {
@@ -173,7 +174,7 @@ final class AuthStore: ObservableObject {
             errorMessage = friendlyMessage(for: error)
         }
 
-        isLoading = false
+        setLoading(false)
     }
 
     private func handleAuthChange(_ user: User?) async {
@@ -188,7 +189,7 @@ final class AuthStore: ObservableObject {
     }
 
     private func loadSession(for user: User) async {
-        isLoading = true
+        setLoading(true, message: "Loading your kingdom...")
         errorMessage = nil
         route = .loading
 
@@ -209,7 +210,7 @@ final class AuthStore: ObservableObject {
             route = .onboarding
         }
 
-        isLoading = false
+        setLoading(false)
     }
 
     private func apply(snapshot: SessionSnapshot) {
@@ -226,7 +227,7 @@ final class AuthStore: ObservableObject {
             return
         }
 
-        isLoading = true
+        setLoading(true, message: "Switching hero profile...")
         errorMessage = nil
 
         do {
@@ -243,7 +244,7 @@ final class AuthStore: ObservableObject {
             errorMessage = "We couldn't switch the hero profile right now."
         }
 
-        isLoading = false
+        setLoading(false)
     }
 
     private func route(for userProfile: UserProfile?, familyProfile: FamilyProfile?) -> AppRoute {
@@ -268,6 +269,7 @@ final class AuthStore: ObservableObject {
     private func clearSessionState() {
         isSignedIn = false
         isLoading = false
+        loadingMessage = nil
         currentUserID = nil
         userProfile = nil
         familyProfile = nil
@@ -297,6 +299,11 @@ final class AuthStore: ObservableObject {
         default:
             return error.localizedDescription
         }
+    }
+
+    private func setLoading(_ loading: Bool, message: String? = nil) {
+        isLoading = loading
+        loadingMessage = loading ? message : nil
     }
 }
 

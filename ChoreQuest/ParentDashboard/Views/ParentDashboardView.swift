@@ -13,7 +13,23 @@ struct ParentDashboardView: View {
 
     @State private var selectedTab: ParentDashboardTab = .quests
     private var snapshot: ParentDashboardSnapshot? {
-        authStore.familyProfile.map { ParentDashboardSnapshot(familyProfile: $0, quests: dashboardStore.quests) }
+        authStore.familyProfile.map { familyProfile in
+            let familyProgress = FamilyProgressSnapshot.resolve(
+                familyProfile: familyProfile,
+                submissions: dashboardStore.submissions,
+                quests: dashboardStore.quests,
+                claims: dashboardStore.rewardClaims
+            )
+
+            return ParentDashboardSnapshot(
+                familyProfile: familyProfile,
+                quests: dashboardStore.quests,
+                pendingApprovals: dashboardStore.pendingApprovals,
+                pendingRewardClaims: dashboardStore.rewardClaims.filter { $0.status == .claimed },
+                availableRewards: dashboardStore.rewards.filter(\.isActive),
+                familyProgress: familyProgress
+            )
+        }
     }
 
     var body: some View {
@@ -71,8 +87,67 @@ struct ParentDashboardView: View {
                         }
                     }
                 }
+                .sheet(isPresented: $dashboardStore.isPresentingCreateReward) {
+                    if let familyProfile = authStore.familyProfile {
+                        CreateRewardView(
+                            familyID: familyProfile.id,
+                            isSaving: dashboardStore.isSavingReward
+                        ) { input in
+                            await dashboardStore.createReward(input)
+                        }
+                    }
+                }
             } else {
                 ParentDashboardEmptyState(authStore: authStore)
+            }
+        }
+        .navigationTitle("Chore Quest")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let snapshot {
+                ToolbarItem(placement: .topBarLeading) {
+                    QuestProfileAvatar(
+                        imageBase64: snapshot.parentImageBase64,
+                        fallbackIconName: "crown.fill",
+                        fallbackColorHex: 0x630ed4,
+                        size: 34,
+                        borderColor: ChoreQuestColors.primaryFixed
+                    )
+                }
+            }
+
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button(action: {
+                    selectedTab = .approvals
+                }) {
+                    Image(systemName: "bell")
+                        .overlay(alignment: .topTrailing) {
+                            if let snapshot, (snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count) > 0 {
+                                Text("\(min(snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count, 9))")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .frame(minWidth: 16, minHeight: 16)
+                                    .padding(2)
+                                    .background(ChoreQuestColors.error)
+                                    .clipShape(Capsule())
+                                    .offset(x: 8, y: -8)
+                            }
+                        }
+                }
+
+                Menu {
+                    Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
+                        Task {
+                            await authStore.clearSelectedRole()
+                        }
+                    }
+
+                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                        authStore.signOut()
+                    }
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                }
             }
         }
         .task(id: questLoadKey) {
@@ -89,55 +164,6 @@ struct ParentDashboardView: View {
                 authStore.errorMessage = newValue
             }
         ))
-    }
-
-    private func topBar(snapshot: ParentDashboardSnapshot) -> some View {
-        HStack(spacing: 14) {
-            HStack(spacing: 12) {
-                QuestProfileAvatar(
-                    imageBase64: snapshot.parentImageBase64,
-                    fallbackIconName: "crown.fill",
-                    fallbackColorHex: 0x630ed4,
-                    size: 42,
-                    borderColor: ChoreQuestColors.primaryFixed
-                )
-
-                Text("Chore Quest")
-                    .font(.custom("Quicksand", size: 24).weight(.bold))
-                    .foregroundStyle(ChoreQuestColors.primary)
-            }
-
-            Spacer()
-
-            Button(action: {}) {
-                Image(systemName: "bell")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                    .frame(width: 40, height: 40)
-                    .background(ChoreQuestColors.surfaceContainerLowest.opacity(0.88))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-
-            Menu {
-                Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
-                    Task {
-                        await authStore.clearSelectedRole()
-                    }
-                }
-
-                Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
-                    authStore.signOut()
-                }
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(ChoreQuestColors.primary)
-                    .frame(width: 40, height: 40)
-                    .background(ChoreQuestColors.surfaceContainerLowest.opacity(0.88))
-                    .clipShape(Circle())
-            }
-        }
     }
 
     private func header(snapshot: ParentDashboardSnapshot) -> some View {
@@ -157,7 +183,6 @@ struct ParentDashboardView: View {
     private func dashboardTabContent(snapshot: ParentDashboardSnapshot, tab: ParentDashboardTab) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                topBar(snapshot: snapshot)
                 header(snapshot: snapshot)
 
                 switch tab {
@@ -177,7 +202,7 @@ struct ParentDashboardView: View {
 
     @ViewBuilder
     private func approvalsDashboardTab(snapshot: ParentDashboardSnapshot) -> some View {
-        let approvalsCount = snapshot.pendingApprovals.count
+        let approvalsCount = snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count
 
         if approvalsCount > 0 {
             dashboardTabContent(snapshot: snapshot, tab: .approvals)
@@ -272,7 +297,10 @@ struct ParentDashboardView: View {
                 } else {
                     VStack(spacing: 14) {
                         ForEach(snapshot.activeQuests) { quest in
-                            ParentQuestRow(quest: quest)
+                            ParentQuestRow(
+                                quest: quest,
+                                isAwaitingApproval: snapshot.awaitingApprovalQuestIDs.contains(quest.id)
+                            )
                         }
                     }
                 }
@@ -284,7 +312,7 @@ struct ParentDashboardView: View {
         VStack(spacing: 16) {
             ParentSectionHeader(title: "Pending Approvals", actionTitle: nil, action: nil)
 
-            if snapshot.pendingApprovals.isEmpty {
+            if snapshot.pendingApprovals.isEmpty && snapshot.pendingRewardClaims.isEmpty {
                 ParentSurfaceCard {
                     VStack(spacing: 12) {
                         Image(systemName: "checkmark.seal.fill")
@@ -295,7 +323,7 @@ struct ParentDashboardView: View {
                             .font(.custom("Quicksand", size: 22).weight(.bold))
                             .foregroundStyle(ChoreQuestColors.onSurface)
 
-                        Text("Completed quests will show up here when heroes send proof for review.")
+                        Text("Completed quests and reward claims will show up here when heroes need your attention.")
                             .font(.custom("Quicksand", size: 15).weight(.medium))
                             .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                             .multilineTextAlignment(.center)
@@ -306,7 +334,37 @@ struct ParentDashboardView: View {
             } else {
                 VStack(spacing: 16) {
                     ForEach(snapshot.pendingApprovals) { approval in
-                        ParentApprovalCard(approval: approval)
+                        ParentApprovalCard(
+                            approval: approval,
+                            isUpdating: dashboardStore.isUpdatingApproval,
+                            onApprove: {
+                                await dashboardStore.approve(approval)
+                            },
+                            onReject: {
+                                await dashboardStore.reject(approval)
+                            }
+                        )
+                    }
+
+                    ForEach(snapshot.pendingRewardClaims) { claim in
+                        RewardClaimCard(
+                            claim: claim,
+                            hero: snapshot.heroes.first(where: { $0.id == claim.heroID }).map {
+                                ParentAssignee(
+                                    name: $0.name,
+                                    imageBase64: $0.imageBase64,
+                                    avatarIconName: $0.avatarIconName,
+                                    avatarColorHex: $0.avatarColorHex
+                                )
+                            },
+                            isUpdating: dashboardStore.isUpdatingClaim,
+                            onFulfill: {
+                                await dashboardStore.fulfill(claim)
+                            },
+                            onReject: {
+                                await dashboardStore.reject(claim)
+                            }
+                        )
                     }
                 }
             }
@@ -351,7 +409,42 @@ struct ParentDashboardView: View {
                 }
             }
 
+            ParentSectionHeader(title: "Rewards", actionTitle: "Create Reward") {
+                dashboardStore.isPresentingCreateReward = true
+            }
+
+            if snapshot.availableRewards.isEmpty {
+                ParentSurfaceCard {
+                    VStack(spacing: 12) {
+                        Image(systemName: "gift.fill")
+                            .font(.system(size: 42, weight: .bold))
+                            .foregroundStyle(ChoreQuestColors.primary)
+
+                        Text("No rewards yet")
+                            .font(.custom("Quicksand", size: 22).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurface)
+
+                        Text("Create a reward so heroes can spend their XP.")
+                            .font(.custom("Quicksand", size: 15).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                }
+            } else {
+                VStack(spacing: 14) {
+                    ForEach(snapshot.availableRewards) { reward in
+                        FamilyRewardCard(reward: reward)
+                    }
+                }
+            }
+
             ParentSectionHeader(title: "Your Heroes", actionTitle: nil, action: nil)
+
+            FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
+
+            HallOfHeroesSection(entries: snapshot.familyProgress.leaderboard)
 
             if snapshot.heroes.isEmpty {
                 ParentSurfaceCard {

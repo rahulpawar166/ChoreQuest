@@ -10,6 +10,7 @@ import SwiftUI
 struct KidDashboardView: View {
     @ObservedObject var authStore: AuthStore
     @StateObject private var store = KidDashboardStore()
+    @State private var submissionQuest: FamilyQuest?
 
     private var familyProfile: FamilyProfile? {
         authStore.familyProfile
@@ -20,6 +21,9 @@ struct KidDashboardView: View {
         return KidDashboardSnapshot.resolve(
             from: familyProfile,
             quests: store.quests,
+            submissions: store.submissions,
+            rewards: store.rewards,
+            claims: store.rewardClaims,
             selectedHeroID: authStore.userProfile?.selectedHeroID
         )
     }
@@ -35,10 +39,12 @@ struct KidDashboardView: View {
                 if let snapshot {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 22) {
-                            topBar(snapshot: snapshot)
                             heroHeader(snapshot: snapshot)
+                            rewardsSection(snapshot: snapshot)
+                            availableRewardsSection(snapshot: snapshot, familyProfile: familyProfile)
                             assignedQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
                             claimableQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
+                            leaderboardSection(snapshot: snapshot)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 18)
@@ -51,9 +57,40 @@ struct KidDashboardView: View {
                 KidDashboardLinkRequiredView(authStore: authStore)
             }
         }
+        .navigationTitle("Hero's Quest Log")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let snapshot {
+                ToolbarItem(placement: .topBarLeading) {
+                    QuestProfileAvatar(
+                        imageBase64: snapshot.hero.imageBase64,
+                        fallbackIconName: snapshot.hero.avatarIconName,
+                        fallbackColorHex: snapshot.hero.avatarColorHex,
+                        size: 34,
+                        borderColor: ChoreQuestColors.primaryFixed
+                    )
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
+                        Task {
+                            await authStore.clearSelectedRole()
+                        }
+                    }
+
+                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                        authStore.signOut()
+                    }
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                }
+            }
+        }
         .task(id: questLoadKey) {
-            guard let familyProfile else { return }
-            await store.loadQuests(familyID: familyProfile.id, heroes: familyProfile.heroes)
+            guard let familyProfile, let heroID = snapshot?.hero.id else { return }
+            await store.loadDashboard(familyID: familyProfile.id, heroID: heroID, heroes: familyProfile.heroes)
         }
         .questToast(message: Binding(
             get: { store.errorMessage ?? authStore.errorMessage },
@@ -62,43 +99,24 @@ struct KidDashboardView: View {
                 authStore.errorMessage = newValue
             }
         ))
-    }
-
-    private func topBar(snapshot: KidDashboardSnapshot) -> some View {
-        HStack(spacing: 14) {
-            HStack(spacing: 12) {
-                QuestProfileAvatar(
-                    imageBase64: snapshot.hero.imageBase64,
-                    fallbackIconName: snapshot.hero.avatarIconName,
-                    fallbackColorHex: snapshot.hero.avatarColorHex,
-                    size: 48,
-                    borderColor: ChoreQuestColors.primaryFixed
-                )
-
-                Text("Hero's Quest Log")
-                    .font(.custom("Quicksand", size: 24).weight(.bold))
-                    .foregroundStyle(ChoreQuestColors.primary)
-            }
-
-            Spacer()
-
-            Menu {
-                Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
-                    Task {
-                        await authStore.clearSelectedRole()
+        .sheet(item: $submissionQuest) { quest in
+            if let familyProfile, let snapshot {
+                NavigationStack {
+                    KidQuestSubmissionView(
+                        quest: quest,
+                        hero: snapshot.hero,
+                        familyName: snapshot.displayFamilyName,
+                        isSubmitting: store.isSubmittingProof
+                    ) { imageData in
+                        await store.submitProof(
+                            for: quest,
+                            hero: snapshot.hero,
+                            proofImageData: imageData,
+                            familyID: familyProfile.id,
+                            heroes: familyProfile.heroes
+                        )
                     }
                 }
-
-                Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
-                    authStore.signOut()
-                }
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(ChoreQuestColors.primary)
-                    .frame(width: 40, height: 40)
-                    .background(ChoreQuestColors.surfaceContainerLowest.opacity(0.88))
-                    .clipShape(Circle())
             }
         }
     }
@@ -189,9 +207,13 @@ struct KidDashboardView: View {
                     ForEach(snapshot.assignedQuests) { quest in
                         KidAssignedQuestCard(
                             quest: quest,
-                            isUpdating: store.isUpdatingQuest
+                            submission: snapshot.latestSubmissionByQuestID[quest.id],
+                            isUpdating: store.isUpdatingQuest,
+                            onSubmitProof: {
+                                submissionQuest = quest
+                            }
                         ) {
-                            await store.rejectQuest(quest, familyID: familyProfile.id, heroes: familyProfile.heroes)
+                            await store.rejectQuest(quest, heroID: snapshot.hero.id, familyID: familyProfile.id, heroes: familyProfile.heroes)
                         }
                     }
                 }
@@ -224,6 +246,91 @@ struct KidDashboardView: View {
         }
     }
 
+    private func rewardsSection(snapshot: KidDashboardSnapshot) -> some View {
+        VStack(spacing: 16) {
+            ParentSectionHeader(title: "Current Rewards", actionTitle: nil, action: nil)
+
+            FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
+
+            ParentSurfaceCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        heroRewardBadge(title: "Total XP", value: "\(snapshot.heroXP)", tint: ChoreQuestColors.secondaryText, background: ChoreQuestColors.secondary)
+                        heroRewardBadge(title: "Approved", value: "\(snapshot.heroApprovedQuestCount)", tint: ChoreQuestColors.tertiaryText, background: ChoreQuestColors.tertiaryFixed)
+                    }
+
+                    if snapshot.recentApprovedRewards.isEmpty {
+                        Text("Approved quests will show up here as soon as a parent confirms them.")
+                            .font(.custom("Quicksand", size: 14).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    } else {
+                        VStack(spacing: 10) {
+                            ForEach(snapshot.recentApprovedRewards, id: \.id) { reward in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(reward.questTitle)
+                                            .font(.custom("Quicksand", size: 16).weight(.bold))
+                                            .foregroundStyle(ChoreQuestColors.onSurface)
+
+                                        Text("Reward confirmed")
+                                            .font(.custom("Quicksand", size: 12).weight(.medium))
+                                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                                    }
+
+                                    Spacer()
+
+                                    Text("+\(reward.xpAwarded()) XP")
+                                        .font(.custom("Quicksand", size: 12).weight(.bold))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .background(ChoreQuestColors.secondary)
+                                        .foregroundStyle(ChoreQuestColors.secondaryText)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func availableRewardsSection(snapshot: KidDashboardSnapshot, familyProfile: FamilyProfile) -> some View {
+        VStack(spacing: 16) {
+            ParentSectionHeader(title: "Available Rewards", actionTitle: nil, action: nil)
+
+            if snapshot.rewards.isEmpty {
+                KidDashboardEmptyCard(
+                    icon: "gift.fill",
+                    title: "No rewards yet",
+                    message: "Ask a parent to add a few rewards so heroes can spend XP."
+                )
+            } else {
+                VStack(spacing: 14) {
+                    ForEach(snapshot.rewards) { reward in
+                        KidRewardCard(
+                            reward: reward,
+                            availableXP: snapshot.heroXP,
+                            latestClaim: snapshot.rewardClaims.first(where: { $0.rewardID == reward.id && $0.status == .claimed }),
+                            isClaiming: store.isClaimingReward
+                        ) {
+                            await store.claimReward(
+                                reward,
+                                hero: snapshot.hero,
+                                availableXP: snapshot.heroXP,
+                                familyID: familyProfile.id
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func leaderboardSection(snapshot: KidDashboardSnapshot) -> some View {
+        HallOfHeroesSection(entries: snapshot.familyProgress.leaderboard)
+    }
+
     private func statBadge(title: String, value: String, tint: Color) -> some View {
         VStack(spacing: 4) {
             Text(title)
@@ -239,61 +346,169 @@ struct KidDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private func heroRewardBadge(title: String, value: String, tint: Color, background: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.custom("Quicksand", size: 12).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+            Text(value)
+                .font(.custom("Quicksand", size: 24).weight(.bold))
+                .foregroundStyle(tint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(background.opacity(0.22))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
     private var questLoadKey: String {
         let familyID = familyProfile?.id ?? "no-family"
-        let heroCount = familyProfile?.heroes.count ?? 0
-        return "\(familyID)-\(heroCount)"
+        let selectedHeroID = authStore.userProfile?.selectedHeroID ?? "no-hero"
+        return "\(familyID)-\(selectedHeroID)"
+    }
+}
+
+private struct KidRewardCard: View {
+    let reward: FamilyReward
+    let availableXP: Int
+    let latestClaim: RewardClaim?
+    let isClaiming: Bool
+    let onClaim: () async -> Bool
+
+    private var canClaim: Bool {
+        availableXP >= reward.costXP && latestClaim == nil
+    }
+
+    var body: some View {
+        ParentSurfaceCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    Circle()
+                        .fill(ChoreQuestColors.secondary)
+                        .frame(width: 54, height: 54)
+                        .overlay {
+                            Image(systemName: reward.iconName)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(ChoreQuestColors.secondaryText)
+                        }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(reward.title)
+                            .font(.custom("Quicksand", size: 18).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurface)
+                        Text(reward.details)
+                            .font(.custom("Quicksand", size: 13).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    }
+
+                    Spacer()
+
+                    Text("\(reward.costXP) XP")
+                        .font(.custom("Quicksand", size: 12).weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(ChoreQuestColors.secondary)
+                        .foregroundStyle(ChoreQuestColors.secondaryText)
+                        .clipShape(Capsule())
+                }
+
+                if let latestClaim {
+                    Text(statusMessage(for: latestClaim))
+                        .font(.custom("Quicksand", size: 12).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                } else {
+                    Text(canClaim ? "Ready to claim." : "Earn \(max(reward.costXP - availableXP, 0)) more XP to unlock.")
+                        .font(.custom("Quicksand", size: 12).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                }
+
+                Button(latestClaim == nil ? "Claim Reward" : "Claim Submitted") {
+                    Task { _ = await onClaim() }
+                }
+                .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
+                .disabled(!canClaim || isClaiming)
+                .opacity(canClaim ? 1 : 0.6)
+            }
+        }
+    }
+
+    private func statusMessage(for claim: RewardClaim) -> String {
+        switch claim.status {
+        case .claimed: return "Claim sent to parent. XP is reserved."
+        case .fulfilled: return "Reward granted by parent."
+        case .rejected: return "Claim was rejected."
+        }
     }
 }
 
 private struct KidAssignedQuestCard: View {
     let quest: FamilyQuest
+    let submission: KidQuestSubmission?
     let isUpdating: Bool
+    let onSubmitProof: () -> Void
     let onReject: () async -> Void
+
+    private var isDailyQuestLockedForToday: Bool {
+        guard
+            quest.frequency == .daily,
+            let submission,
+            submission.status == .approved,
+            let approvalDate = submission.updatedAt ?? submission.createdAt
+        else {
+            return false
+        }
+
+        return Calendar.current.isDateInToday(approvalDate)
+    }
+
+    private var canSubmitProof: Bool {
+        !isUpdating && !isDailyQuestLockedForToday
+    }
 
     var body: some View {
         ParentSurfaceCard {
-            HStack(alignment: .center, spacing: 16) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(ChoreQuestColors.primaryFixed)
-                    .frame(width: 62, height: 62)
-                    .overlay {
-                        Image(systemName: quest.category.iconName)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(ChoreQuestColors.primary)
-                    }
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 16) {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(ChoreQuestColors.primaryFixed)
+                        .frame(width: 62, height: 62)
+                        .overlay {
+                            Image(systemName: quest.category.iconName)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(ChoreQuestColors.primary)
+                        }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(quest.title)
-                        .font(.custom("Quicksand", size: 18).weight(.bold))
-                        .foregroundStyle(ChoreQuestColors.onSurface)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(quest.title)
+                            .font(.custom("Quicksand", size: 18).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurface)
 
-                    Text(quest.details)
-                        .font(.custom("Quicksand", size: 14).weight(.medium))
-                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        Text(quest.details)
+                            .font(.custom("Quicksand", size: 14).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
 
-                    HStack(spacing: 10) {
-                        Text(quest.category.title)
-                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(ChoreQuestColors.surfaceContainerLow)
-                            .foregroundStyle(ChoreQuestColors.primary)
-                            .clipShape(Capsule())
+                        HStack(spacing: 10) {
+                            Text(quest.category.title)
+                                .font(.custom("Quicksand", size: 12).weight(.bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(ChoreQuestColors.surfaceContainerLow)
+                                .foregroundStyle(ChoreQuestColors.primary)
+                                .clipShape(Capsule())
 
-                        Text(quest.frequency.title)
-                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(ChoreQuestColors.tertiaryFixed)
-                            .foregroundStyle(ChoreQuestColors.tertiaryText)
-                            .clipShape(Capsule())
+                            Text(quest.frequency.title)
+                                .font(.custom("Quicksand", size: 12).weight(.bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(ChoreQuestColors.tertiaryFixed)
+                                .foregroundStyle(ChoreQuestColors.tertiaryText)
+                                .clipShape(Capsule())
+                        }
                     }
                 }
 
-                Spacer(minLength: 8)
-
-                VStack(alignment: .trailing, spacing: 10) {
+                HStack {
                     Text("\(quest.xpValue) XP")
                         .font(.custom("Quicksand", size: 13).weight(.bold))
                         .padding(.horizontal, 10)
@@ -301,6 +516,26 @@ private struct KidAssignedQuestCard: View {
                         .background(ChoreQuestColors.secondary)
                         .foregroundStyle(ChoreQuestColors.secondaryText)
                         .clipShape(Capsule())
+
+                    Spacer()
+
+                    if let submission {
+                        Text(submission.status.title)
+                            .font(.custom("Quicksand", size: 12).weight(.bold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(submissionBadgeBackground(for: submission.status))
+                            .foregroundStyle(submissionBadgeForeground(for: submission.status))
+                            .clipShape(Capsule())
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    Button(submitButtonTitle) {
+                        onSubmitProof()
+                    }
+                    .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
+                    .disabled(!canSubmitProof)
 
                     if case .hero = quest.assignment {
                         Button("Reject") {
@@ -311,9 +546,77 @@ private struct KidAssignedQuestCard: View {
                         .disabled(isUpdating)
                     }
                 }
+
+                if let submission {
+                    Text(submissionStatusMessage(submission))
+                        .font(.custom("Quicksand", size: 12).weight(.medium))
+                        .foregroundStyle(submission.status == .rejected ? ChoreQuestColors.errorText : ChoreQuestColors.onSurfaceVariant)
+                }
+
+                if isDailyQuestLockedForToday {
+                    Label("Daily quest already approved for today", systemImage: "checkmark.seal.fill")
+                        .font(.custom("Quicksand", size: 12).weight(.bold))
+                        .foregroundStyle(ChoreQuestColors.tertiaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(ChoreQuestColors.tertiaryFixed)
+                        .clipShape(Capsule())
+                }
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard canSubmitProof else { return }
+            onSubmitProof()
+        }
         .opacity(isUpdating ? 0.72 : 1)
+    }
+
+    private func submissionBadgeBackground(for status: KidQuestSubmissionStatus) -> Color {
+        switch status {
+        case .pending:
+            return ChoreQuestColors.surfaceContainerLow
+        case .approved:
+            return ChoreQuestColors.tertiaryFixed
+        case .rejected:
+            return ChoreQuestColors.errorContainer
+        }
+    }
+
+    private func submissionBadgeForeground(for status: KidQuestSubmissionStatus) -> Color {
+        switch status {
+        case .pending:
+            return ChoreQuestColors.primary
+        case .approved:
+            return ChoreQuestColors.tertiaryText
+        case .rejected:
+            return ChoreQuestColors.errorText
+        }
+    }
+
+    private func submissionStatusMessage(_ submission: KidQuestSubmission) -> String {
+        switch submission.status {
+        case .pending:
+            return "Your proof is waiting for parent approval."
+        case .approved:
+            if isDailyQuestLockedForToday {
+                return "Approved for today. Come back tomorrow to complete this daily quest again."
+            }
+            return "Approved. The reward has been added to your total."
+        case .rejected:
+            if let parentComment = submission.parentComment, !parentComment.isEmpty {
+                return "Redo required: \(parentComment)"
+            }
+            return "This proof was rejected. Update the chore and send a new photo."
+        }
+    }
+
+    private var submitButtonTitle: String {
+        if isDailyQuestLockedForToday {
+            return "Done for Today"
+        }
+
+        return submission == nil ? "Send Proof" : "Update Proof"
     }
 }
 

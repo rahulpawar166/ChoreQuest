@@ -35,7 +35,6 @@ struct HeroSetupView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                topBar
                 header
                 content
                 teamSection
@@ -44,24 +43,20 @@ struct HeroSetupView: View {
             .padding(.top, 18)
             .padding(.bottom, 36)
         }
-    }
-
-    private var topBar: some View {
-        HStack {
-            Button(action: onBack) {
-                HStack(spacing: 8) {
-                    Image(systemName: "chevron.left")
-                    Text("Back")
+        .navigationTitle("New Hero")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: onBack) {
+                    Label("Back", systemImage: "chevron.left")
                 }
-                .font(.custom("Quicksand", size: 14).weight(.bold))
-                .foregroundStyle(ChoreQuestColors.primary)
             }
 
-            Spacer()
-
-            Button("Sign Out", action: onSignOut)
-                .font(.custom("Quicksand", size: 14).weight(.bold))
-                .foregroundStyle(ChoreQuestColors.primary)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Sign Out", action: onSignOut)
+                    .font(.custom("Quicksand", size: 14).weight(.bold))
+            }
         }
     }
 

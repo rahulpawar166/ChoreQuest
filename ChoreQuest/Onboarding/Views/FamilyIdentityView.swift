@@ -22,7 +22,6 @@ struct FamilyIdentityView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                topBar
                 progressHeader
                 configurationCard
                 helperCards
@@ -31,27 +30,14 @@ struct FamilyIdentityView: View {
             .padding(.top, 18)
             .padding(.bottom, 32)
         }
-    }
-
-    private var topBar: some View {
-        HStack {
-            HStack(spacing: 12) {
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(ChoreQuestColors.primary)
-
-                Text("Chore Quest")
-                    .font(.custom("Quicksand", size: 24).weight(.bold))
-                    .foregroundStyle(ChoreQuestColors.primary)
+        .navigationTitle("Chore Quest")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Sign Out", action: onSignOut)
+                    .font(.custom("Quicksand", size: 14).weight(.bold))
             }
-
-            Spacer()
-
-            Button("Sign Out", action: onSignOut)
-                .font(.custom("Quicksand", size: 14).weight(.bold))
-                .foregroundStyle(ChoreQuestColors.primary)
         }
-        .padding(.vertical, 10)
     }
 
     private var progressHeader: some View {

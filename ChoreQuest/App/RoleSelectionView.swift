@@ -28,6 +28,16 @@ struct RoleSelectionView: View {
             }
             .ignoresSafeArea()
         )
+        .navigationTitle("Chore Quest")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Sign Out") {
+                    authStore.signOut()
+                }
+                .font(.custom("Quicksand", size: 14).weight(.bold))
+            }
+        }
         .questToast(message: $authStore.errorMessage)
     }
 
@@ -95,12 +105,6 @@ struct RoleSelectionView: View {
                 ProgressView()
                     .tint(ChoreQuestColors.primary)
             }
-
-            Button("Sign Out") {
-                authStore.signOut()
-            }
-            .font(.custom("Quicksand", size: 14).weight(.bold))
-            .foregroundStyle(ChoreQuestColors.primary)
         }
     }
 

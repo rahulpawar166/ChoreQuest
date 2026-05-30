@@ -18,15 +18,29 @@ struct AppRootView: View {
             case .loading:
                 SessionLoadingView(authStore: authStore)
             case .onboarding:
-                FamilySetupFlowView(authStore: authStore)
+                NavigationStack {
+                    FamilySetupFlowView(authStore: authStore)
+                }
             case .roleSelection:
-                RoleSelectionView(authStore: authStore)
+                NavigationStack {
+                    RoleSelectionView(authStore: authStore)
+                }
             case .parentHome:
-                ParentDashboardView(authStore: authStore)
+                NavigationStack {
+                    ParentDashboardView(authStore: authStore)
+                }
             case .kidHome:
-                KidDashboardView(authStore: authStore)
+                NavigationStack {
+                    KidDashboardView(authStore: authStore)
+                }
             }
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.82), value: authStore.route)
+        .overlay {
+            if authStore.isLoading, authStore.route != .loading {
+                BlockingLoadingOverlay(message: authStore.loadingMessage ?? "Working...")
+                    .transition(.opacity)
+            }
+        }
     }
 }
