@@ -58,12 +58,14 @@ struct KidDashboardSnapshot {
             return false
         }
 
-        let latestSubmissionByQuestID = Dictionary(
-            uniqueKeysWithValues: submissions
-                .filter { $0.heroID == hero.id }
-                .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-                .map { ($0.questID, $0) }
-        )
+        let latestSubmissionByQuestID = submissions
+            .filter { $0.heroID == hero.id }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            .reduce(into: [String: KidQuestSubmission]()) { partialResult, submission in
+                if partialResult[submission.questID] == nil {
+                    partialResult[submission.questID] = submission
+                }
+            }
 
         let familyProgress = FamilyProgressSnapshot.resolve(
             familyProfile: familyProfile,
@@ -74,7 +76,11 @@ struct KidDashboardSnapshot {
 
         let heroEntry = familyProgress.leaderboard.first(where: { $0.id == hero.id })
         let recentApprovedRewards = submissions
-            .filter { $0.heroID == hero.id && $0.status == .approved }
+            .filter {
+                $0.heroID == hero.id &&
+                $0.status == .approved &&
+                $0.xpAwarded() > 0
+            }
             .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
             .prefix(3)
             .map { $0 }

@@ -304,38 +304,6 @@ struct KidDashboardView: View {
                         heroRewardBadge(title: "Total XP", value: "\(snapshot.heroXP)", tint: ChoreQuestColors.secondaryText, background: ChoreQuestColors.secondary)
                         heroRewardBadge(title: "Approved", value: "\(snapshot.heroApprovedQuestCount)", tint: ChoreQuestColors.tertiaryText, background: ChoreQuestColors.tertiaryFixed)
                     }
-
-                    if snapshot.recentApprovedRewards.isEmpty {
-                        Text("Approved quests will show up here as soon as a parent confirms them.")
-                            .font(.custom("Quicksand", size: 14).weight(.medium))
-                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                    } else {
-                        VStack(spacing: 10) {
-                            ForEach(snapshot.recentApprovedRewards, id: \.id) { reward in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(reward.questTitle)
-                                            .font(.custom("Quicksand", size: 16).weight(.bold))
-                                            .foregroundStyle(ChoreQuestColors.onSurface)
-
-                                        Text("Reward confirmed")
-                                            .font(.custom("Quicksand", size: 12).weight(.medium))
-                                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                                    }
-
-                                    Spacer()
-
-                                    Text("+\(reward.xpAwarded()) XP")
-                                        .font(.custom("Quicksand", size: 12).weight(.bold))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 8)
-                                        .background(ChoreQuestColors.secondary)
-                                        .foregroundStyle(ChoreQuestColors.secondaryText)
-                                        .clipShape(Capsule())
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

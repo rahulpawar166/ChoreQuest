@@ -22,6 +22,7 @@ struct KidQuestSubmissionView: View {
     @State private var isShowingSourceDialog = false
     @State private var isShowingSuccess = false
     @State private var permissionAlert: QuestMediaPermissionAlert?
+    private let previewHeight: CGFloat = 280
 
     var body: some View {
         ZStack {
@@ -172,59 +173,7 @@ struct KidQuestSubmissionView: View {
                 Button {
                     isShowingSourceDialog = true
                 } label: {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .fill(Color.white.opacity(0.92))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 300)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                    .stroke(ChoreQuestColors.outlineVariant, style: StrokeStyle(lineWidth: 2.5, dash: [10, 10]))
-                            }
-
-                        if let proofImageData, let image = UIImage(data: proofImageData) {
-                            ZStack(alignment: .topTrailing) {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 300)
-                                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-
-                                Button {
-                                    self.proofImageData = nil
-                                } label: {
-                                    Image(systemName: "trash.fill")
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 38, height: 38)
-                                        .background(ChoreQuestColors.error)
-                                        .clipShape(Circle())
-                                }
-                                .buttonStyle(.plain)
-                                .padding(16)
-                            }
-                        } else {
-                            VStack(spacing: 18) {
-                                Circle()
-                                    .fill(ChoreQuestColors.primary)
-                                    .frame(width: 82, height: 82)
-                                    .overlay {
-                                        Image(systemName: "camera.fill")
-                                            .font(.system(size: 28, weight: .bold))
-                                            .foregroundStyle(.white)
-                                    }
-
-                                Text("Tap to add your victory photo")
-                                    .font(.custom("Quicksand", size: 18).weight(.bold))
-                                    .foregroundStyle(ChoreQuestColors.onSurface)
-
-                                Text("Use the gallery or camera.")
-                                    .font(.custom("Quicksand", size: 14).weight(.medium))
-                                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                            }
-                        }
-                    }
+                    proofPreview
                 }
                 .buttonStyle(.plain)
 
@@ -291,6 +240,63 @@ struct KidQuestSubmissionView: View {
         .buttonStyle(.plain)
         .disabled(proofImageData == nil || isSubmitting)
         .opacity(proofImageData == nil ? 0.6 : 1)
+    }
+
+    private var proofPreview: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.white.opacity(0.92))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(ChoreQuestColors.outlineVariant, style: StrokeStyle(lineWidth: 2.5, dash: [10, 10]))
+                }
+
+            if let proofImageData, let image = UIImage(data: proofImageData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white.opacity(0.92))
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
+                Button {
+                    self.proofImageData = nil
+                } label: {
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(ChoreQuestColors.error)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(16)
+            } else {
+                VStack(spacing: 18) {
+                    Circle()
+                        .fill(ChoreQuestColors.primary)
+                        .frame(width: 82, height: 82)
+                        .overlay {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+
+                    Text("Tap to add your victory photo")
+                        .font(.custom("Quicksand", size: 18).weight(.bold))
+                        .foregroundStyle(ChoreQuestColors.onSurface)
+
+                    Text("Use the gallery or camera.")
+                        .font(.custom("Quicksand", size: 14).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                }
+                .padding(24)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: previewHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
     private var successOverlay: some View {
