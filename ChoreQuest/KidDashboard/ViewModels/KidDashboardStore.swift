@@ -26,11 +26,13 @@ final class KidDashboardStore: ObservableObject {
     private let progressService = FamilyProgressService()
     private let rewardService = RewardService()
     private var submissionListener: ListenerRegistration?
+    private var rewardListener: ListenerRegistration?
     private var rewardClaimListener: ListenerRegistration?
     private var activeFamilyID: String?
 
     deinit {
         submissionListener?.remove()
+        rewardListener?.remove()
         rewardClaimListener?.remove()
     }
 
@@ -41,13 +43,9 @@ final class KidDashboardStore: ObservableObject {
         startRealtimeListenersIfNeeded(familyID: familyID)
 
         do {
-            async let questLoad = questService.loadQuests(familyID: familyID, heroes: heroes)
-            async let rewardLoad = rewardService.loadRewards(familyID: familyID)
-            quests = try await questLoad
-            rewards = try await rewardLoad
+            quests = try await questService.loadQuests(familyID: familyID, heroes: heroes)
         } catch {
             quests = []
-            rewards = []
             errorMessage = "We couldn't load hero quests right now."
         }
     }
@@ -117,6 +115,7 @@ final class KidDashboardStore: ObservableObject {
     private func startRealtimeListenersIfNeeded(familyID: String) {
         guard activeFamilyID != familyID else { return }
         submissionListener?.remove()
+        rewardListener?.remove()
         rewardClaimListener?.remove()
         activeFamilyID = familyID
         submissionListener = progressService.startSubmissionsListener(familyID: familyID) { [weak self] result in
@@ -128,6 +127,19 @@ final class KidDashboardStore: ObservableObject {
                     self.submissions = submissions
                 case .failure:
                     self.errorMessage = "We couldn't load hero rewards right now."
+                }
+            }
+        }
+
+        rewardListener = rewardService.startRewardsListener(familyID: familyID) { [weak self] result in
+            guard let self else { return }
+
+            Task { @MainActor in
+                switch result {
+                case .success(let rewards):
+                    self.rewards = rewards
+                case .failure:
+                    self.errorMessage = "We couldn't load rewards right now."
                 }
             }
         }

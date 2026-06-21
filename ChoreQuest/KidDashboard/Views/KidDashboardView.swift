@@ -294,7 +294,7 @@ struct KidDashboardView: View {
 
     private func rewardsSection(snapshot: KidDashboardSnapshot) -> some View {
         VStack(spacing: 16) {
-            ParentSectionHeader(title: "Current Rewards", actionTitle: nil, action: nil)
+            ParentSectionHeader(title: "Hero Progress", actionTitle: nil, action: nil)
 
             FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
 
@@ -304,6 +304,10 @@ struct KidDashboardView: View {
                         heroRewardBadge(title: "Total XP", value: "\(snapshot.heroXP)", tint: ChoreQuestColors.secondaryText, background: ChoreQuestColors.secondary)
                         heroRewardBadge(title: "Approved", value: "\(snapshot.heroApprovedQuestCount)", tint: ChoreQuestColors.tertiaryText, background: ChoreQuestColors.tertiaryFixed)
                     }
+
+                    Text("Track your earned XP and how many quests a parent has approved.")
+                        .font(.custom("Quicksand", size: 14).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                 }
             }
         }
@@ -312,7 +316,7 @@ struct KidDashboardView: View {
     private func availableRewardsSection(snapshot: KidDashboardSnapshot, familyProfile: FamilyProfile) -> some View {
         VStack(spacing: 16) {
             HStack {
-                Text("Available Rewards")
+                Text("Reward Shop")
                     .font(.custom("Quicksand", size: 22).weight(.bold))
                     .foregroundStyle(ChoreQuestColors.onSurface)
 
@@ -330,8 +334,8 @@ struct KidDashboardView: View {
             if snapshot.rewards.isEmpty {
                 KidDashboardEmptyCard(
                     icon: "gift.fill",
-                    title: "No rewards yet",
-                    message: "Ask a parent to add a few rewards so heroes can spend XP."
+                    title: "No shop rewards yet",
+                    message: "Ask a parent to add rewards that heroes can claim with XP."
                 )
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -409,7 +413,38 @@ private struct KidRewardCard: View {
     @State private var isShowingClaimConfirmation = false
 
     private var canClaim: Bool {
-        availableXP >= reward.costXP && latestClaim == nil
+        guard availableXP >= reward.costXP else { return false }
+
+        switch latestClaim?.status {
+        case .none, .rejected:
+            return true
+        case .claimed, .fulfilled:
+            return false
+        }
+    }
+
+    private var buttonTitle: String {
+        switch latestClaim?.status {
+        case .none:
+            return "Claim Reward"
+        case .claimed:
+            return "Claim Submitted"
+        case .fulfilled:
+            return "Claim Approved"
+        case .rejected:
+            return "Claim Again"
+        }
+    }
+
+    private var buttonStyleConfiguration: (background: Color, foreground: Color) {
+        switch latestClaim?.status {
+        case .fulfilled:
+            return (ChoreQuestColors.tertiary, .white)
+        case .claimed:
+            return (ChoreQuestColors.surfaceContainerHigh, ChoreQuestColors.onSurfaceVariant)
+        default:
+            return (ChoreQuestColors.primary, .white)
+        }
     }
 
     var body: some View {
@@ -455,12 +490,17 @@ private struct KidRewardCard: View {
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                 }
 
-                Button(latestClaim == nil ? "Claim Reward" : "Claim Submitted") {
+                Button(buttonTitle) {
                     isShowingClaimConfirmation = true
                 }
-                .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
-                .disabled(!canClaim || isClaiming)
-                .opacity(canClaim ? 1 : 0.6)
+                .buttonStyle(
+                    ParentActionPillStyle(
+                        background: buttonStyleConfiguration.background,
+                        foreground: buttonStyleConfiguration.foreground
+                    )
+                )
+                .disabled(!canClaim || isClaiming || latestClaim?.status == .fulfilled)
+                .opacity((canClaim || latestClaim?.status == .fulfilled) ? 1 : 0.6)
             }
         }
         .alert("Claim Reward?", isPresented: $isShowingClaimConfirmation) {

@@ -339,10 +339,14 @@ struct ParentApprovalCard: View {
                             Text(approval.hero.name)
                                 .font(.custom("Quicksand", size: 18).weight(.bold))
                                 .foregroundStyle(ChoreQuestColors.onSurface)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
 
                             Text(approval.heroLevelTitle)
                                 .font(.custom("Quicksand", size: 12).weight(.bold))
                                 .foregroundStyle(ChoreQuestColors.primary)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
 
@@ -355,6 +359,7 @@ struct ParentApprovalCard: View {
                         .background(ChoreQuestColors.secondary)
                         .foregroundStyle(ChoreQuestColors.secondaryText)
                         .clipShape(Capsule())
+                        .fixedSize(horizontal: true, vertical: false)
                 }
 
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -373,25 +378,7 @@ struct ParentApprovalCard: View {
                         proofPreview
                     }
 
-                HStack(spacing: 12) {
-                    Button {
-                        Task { await onApprove() }
-                    } label: {
-                        Label("Approve", systemImage: "checkmark.circle.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.tertiary, foreground: .white))
-                    .disabled(isUpdating)
-
-                    Button {
-                        onReject()
-                    } label: {
-                        Label("Reject", systemImage: "xmark.circle")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(ParentOutlinePillStyle())
-                    .disabled(isUpdating)
-                }
+                approvalActionButtons
             }
         }
         .opacity(isUpdating ? 0.72 : 1)
@@ -430,6 +417,7 @@ struct ParentApprovalCard: View {
                     .background(Color.white.opacity(0.86))
                     .foregroundStyle(ChoreQuestColors.primary)
                     .clipShape(Capsule())
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
             Spacer()
@@ -441,8 +429,46 @@ struct ParentApprovalCard: View {
                 .padding(.vertical, 10)
                 .background(Color.white.opacity(0.92))
                 .clipShape(Capsule())
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
+    }
+
+    private var approvalActionButtons: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                approveButton
+                rejectButton
+            }
+
+            VStack(spacing: 12) {
+                approveButton
+                rejectButton
+            }
+        }
+    }
+
+    private var approveButton: some View {
+        Button {
+            Task { await onApprove() }
+        } label: {
+            Label("Approve", systemImage: "checkmark.circle.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.tertiary, foreground: .white))
+        .disabled(isUpdating)
+    }
+
+    private var rejectButton: some View {
+        Button {
+            onReject()
+        } label: {
+            Label("Reject", systemImage: "xmark.circle")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(ParentOutlinePillStyle())
+        .disabled(isUpdating)
     }
 
     private var decodedProofImage: UIImage? {
@@ -590,7 +616,7 @@ struct RewardClaimCard: View {
     var body: some View {
         ParentSurfaceCard {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     if let hero {
                         QuestProfileAvatar(
                             imageBase64: hero.imageBase64,
@@ -605,9 +631,13 @@ struct RewardClaimCard: View {
                         Text(claim.heroName)
                             .font(.custom("Quicksand", size: 18).weight(.bold))
                             .foregroundStyle(ChoreQuestColors.onSurface)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("claimed \(claim.rewardTitle)")
                             .font(.custom("Quicksand", size: 13).weight(.medium))
                             .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer()
@@ -619,46 +649,81 @@ struct RewardClaimCard: View {
                         .background(ChoreQuestColors.errorContainer)
                         .foregroundStyle(ChoreQuestColors.errorText)
                         .clipShape(Capsule())
+                        .fixedSize(horizontal: true, vertical: false)
                 }
 
-                HStack(spacing: 12) {
-                    Label(claim.rewardTitle, systemImage: claim.rewardIconName)
-                        .font(.custom("Quicksand", size: 14).weight(.bold))
-                        .foregroundStyle(ChoreQuestColors.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(ChoreQuestColors.surfaceContainerLow)
-                        .clipShape(Capsule())
-
-                    Spacer()
-
-                    Text(claim.status.title)
-                        .font(.custom("Quicksand", size: 12).weight(.bold))
-                        .foregroundStyle(ChoreQuestColors.secondaryText)
-                }
-
-                HStack(spacing: 12) {
-                    Button {
-                        Task { await onFulfill() }
-                    } label: {
-                        Label("Grant", systemImage: "gift.fill")
-                            .frame(maxWidth: .infinity)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        rewardTitlePill
+                        Spacer()
+                        statusLabel
                     }
-                    .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.tertiary, foreground: .white))
-                    .disabled(isUpdating)
 
-                    Button {
-                        onReject()
-                    } label: {
-                        Label("Reject", systemImage: "xmark.circle")
-                            .frame(maxWidth: .infinity)
+                    VStack(alignment: .leading, spacing: 10) {
+                        rewardTitlePill
+                        statusLabel
                     }
-                    .buttonStyle(ParentOutlinePillStyle())
-                    .disabled(isUpdating)
                 }
+
+                rewardActionButtons
             }
         }
         .opacity(isUpdating ? 0.72 : 1)
+    }
+
+    private var rewardTitlePill: some View {
+        Label(claim.rewardTitle, systemImage: claim.rewardIconName)
+            .font(.custom("Quicksand", size: 14).weight(.bold))
+            .foregroundStyle(ChoreQuestColors.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(ChoreQuestColors.surfaceContainerLow)
+            .clipShape(Capsule())
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var statusLabel: some View {
+        Text(claim.status.title)
+            .font(.custom("Quicksand", size: 12).weight(.bold))
+            .foregroundStyle(ChoreQuestColors.secondaryText)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var rewardActionButtons: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                grantButton
+                rejectButton
+            }
+
+            VStack(spacing: 12) {
+                grantButton
+                rejectButton
+            }
+        }
+    }
+
+    private var grantButton: some View {
+        Button {
+            Task { await onFulfill() }
+        } label: {
+            Label("Grant", systemImage: "gift.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.tertiary, foreground: .white))
+        .disabled(isUpdating)
+    }
+
+    private var rejectButton: some View {
+        Button {
+            onReject()
+        } label: {
+            Label("Reject", systemImage: "xmark.circle")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(ParentOutlinePillStyle())
+        .disabled(isUpdating)
     }
 }
 

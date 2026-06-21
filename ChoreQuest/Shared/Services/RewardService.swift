@@ -51,6 +51,30 @@ final class RewardService {
             .deleteAsync()
     }
 
+    func startRewardsListener(
+        familyID: String,
+        onUpdate: @escaping (Result<[FamilyReward], Error>) -> Void
+    ) -> ListenerRegistration {
+        db.collection("families")
+            .document(familyID)
+            .collection("rewards")
+            .addSnapshotListener { snapshot, error in
+                if let error {
+                    onUpdate(.failure(error))
+                    return
+                }
+
+                guard let snapshot else {
+                    onUpdate(.success([]))
+                    return
+                }
+
+                let rewards = snapshot.documents.compactMap { Self.reward(from: $0, familyID: familyID) }
+                    .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+                onUpdate(.success(rewards))
+            }
+    }
+
     func startClaimsListener(
         familyID: String,
         onUpdate: @escaping (Result<[RewardClaim], Error>) -> Void
