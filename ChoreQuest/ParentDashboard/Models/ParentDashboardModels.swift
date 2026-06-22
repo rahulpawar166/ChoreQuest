@@ -11,8 +11,18 @@ enum ParentDashboardTab: String, CaseIterable, Identifiable {
     case quests
     case approvals
     case heroes
+    case settings
 
     var id: String { rawValue }
+
+    var navigationTitle: String {
+        switch self {
+        case .quests: return "Chore Quest"
+        case .approvals: return "Approvals"
+        case .heroes: return "Heroes"
+        case .settings: return "Settings"
+        }
+    }
 }
 
 struct ParentDashboardSnapshot {

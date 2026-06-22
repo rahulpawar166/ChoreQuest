@@ -67,6 +67,36 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    func deleteAccount(password: String) async -> Bool {
+        guard
+            let user = Auth.auth().currentUser,
+            let email = user.email,
+            let userID = currentUserID
+        else {
+            errorMessage = "The signed-in account could not be verified."
+            return false
+        }
+
+        setLoading(true, message: "Deleting family account...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+            try await user.reauthenticateAsync(with: credential)
+            try await sessionService.deleteAccountData(
+                userID: userID,
+                familyID: familyProfile?.id ?? userProfile?.familyID
+            )
+            try await user.deleteAccountAsync()
+            clearSessionState()
+            return true
+        } catch {
+            errorMessage = deletionMessage(for: error)
+            return false
+        }
+    }
+
     func retrySessionLoad() {
         guard let currentUser = Auth.auth().currentUser else {
             route = .auth
@@ -414,6 +444,24 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    private func deletionMessage(for error: Error) -> String {
+        let nsError = error as NSError
+        guard let authCode = AuthErrorCode(rawValue: nsError.code) else {
+            return "We couldn't delete the account. No further changes were made after the failure."
+        }
+
+        switch authCode {
+        case .wrongPassword, .invalidCredential:
+            return "The password is incorrect. Your account was not deleted."
+        case .networkError:
+            return "The network dropped while deleting the account. Please try again."
+        case .requiresRecentLogin:
+            return "Please sign out, sign in again, and retry account deletion."
+        default:
+            return error.localizedDescription
+        }
+    }
+
     private func setLoading(_ loading: Bool, message: String? = nil) {
         isLoading = loading
         loadingMessage = loading ? message : nil
@@ -442,6 +490,32 @@ private extension Auth {
     func createUserAsync(withEmail email: String, password: String) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             createUser(withEmail: email, password: password) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+}
+
+private extension User {
+    func reauthenticateAsync(with credential: AuthCredential) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            reauthenticate(with: credential) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    func deleteAccountAsync() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            delete { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {

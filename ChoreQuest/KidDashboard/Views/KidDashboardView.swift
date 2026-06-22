@@ -16,6 +16,8 @@ struct KidDashboardView: View {
     @State private var isHeroFloating = false
     @State private var selectedTab: KidDashboardTab = .adventures
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("appAnimationsEnabled") private var animationsEnabled = true
+    @AppStorage("appHapticsEnabled") private var hapticsEnabled = true
 
     private var familyProfile: FamilyProfile? {
         authStore.familyProfile
@@ -73,11 +75,24 @@ struct KidDashboardView: View {
                         .tabItem {
                             Label("Team", systemImage: "person.3.fill")
                         }
+
+                        ChoreQuestSettingsView(
+                            authStore: authStore,
+                            role: .kid,
+                            selectedHero: snapshot.hero,
+                            onViewHistory: { isPresentingHistory = true }
+                        )
+                        .tag(KidDashboardTab.settings)
+                        .tabItem {
+                            Label("Settings", systemImage: "gearshape.fill")
+                        }
                     }
                     .tint(ChoreQuestColors.primary)
                     .toolbarBackground(ChoreQuestColors.surfaceContainerLowest, for: .tabBar)
                     .toolbarBackground(.visible, for: .tabBar)
-                    .sensoryFeedback(.selection, trigger: selectedTab)
+                    .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in
+                        hapticsEnabled
+                    }
                 } else {
                     KidDashboardLinkRequiredView(authStore: authStore)
                 }
@@ -105,32 +120,27 @@ struct KidDashboardView: View {
                 }
             }
 
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if snapshot != nil {
+            ToolbarItem(placement: .topBarTrailing) {
+                if snapshot != nil, selectedTab != .settings {
                     Button {
                         isPresentingHistory = true
                     } label: {
                         Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                     }
                 }
-
-                Menu {
-                    Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
-                        Task {
-                            await authStore.clearSelectedRole()
-                        }
-                    }
-
-                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
-                        authStore.signOut()
-                    }
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                }
             }
         }
         .onAppear {
-            guard !reduceMotion else { return }
+            guard animationsEnabled, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                isHeroFloating = true
+            }
+        }
+        .onChange(of: animationsEnabled) { _, isEnabled in
+            guard isEnabled, !reduceMotion else {
+                isHeroFloating = false
+                return
+            }
             withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
                 isHeroFloating = true
             }
@@ -224,6 +234,8 @@ struct KidDashboardView: View {
                     case .team:
                         familyProgressSection(snapshot: snapshot)
                         leaderboardSection(snapshot: snapshot)
+                    case .settings:
+                        EmptyView()
                     }
                 }
                 .padding(.horizontal, 20)
@@ -556,12 +568,14 @@ private enum KidDashboardTab: Hashable {
     case adventures
     case rewards
     case team
+    case settings
 
     var navigationTitle: String {
         switch self {
         case .adventures: return "Hero Adventures"
         case .rewards: return "Reward Shop"
         case .team: return "Family Team"
+        case .settings: return "Settings"
         }
     }
 }

@@ -16,6 +16,29 @@ struct SessionSnapshot {
 final class FirestoreSessionService {
     private let db = Firestore.firestore()
 
+    func deleteAccountData(userID: String, familyID: String?) async throws {
+        if let familyID {
+            let familyReference = db.collection("families").document(familyID)
+            let subcollections = [
+                "quests",
+                "questSubmissions",
+                "rewards",
+                "rewardClaims",
+                "familyContributions"
+            ]
+
+            for subcollection in subcollections {
+                try await deleteDocuments(in: familyReference.collection(subcollection))
+            }
+
+            try await familyReference.deleteAccountDocumentAsync()
+        }
+
+        try await db.collection("users")
+            .document(userID)
+            .deleteAccountDocumentAsync()
+    }
+
     func loadSession(userID: String, email: String?) async throws -> SessionSnapshot {
         let userReference = db.collection("users").document(userID)
         let userSnapshot = try await userReference.getDocumentAsync()
@@ -338,6 +361,19 @@ final class FirestoreSessionService {
 
         return legacyTitle
     }
+
+    private func deleteDocuments(in collection: CollectionReference) async throws {
+        while true {
+            let snapshot = try await collection
+                .limit(to: 400)
+                .getAccountDeletionDocumentsAsync()
+            guard !snapshot.documents.isEmpty else { return }
+
+            let batch = db.batch()
+            snapshot.documents.forEach { batch.deleteDocument($0.reference) }
+            try await batch.commitAccountDeletionAsync()
+        }
+    }
 }
 
 private extension DocumentReference {
@@ -358,6 +394,54 @@ private extension DocumentReference {
     func setDataAsync(_ data: [String: Any], merge: Bool) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             setData(data, merge: merge) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+}
+
+private extension DocumentReference {
+    func deleteAccountDocumentAsync() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            delete { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+}
+
+private extension Query {
+    func getAccountDeletionDocumentsAsync() async throws -> QuerySnapshot {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<QuerySnapshot, Error>) in
+            getDocuments { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let snapshot {
+                    continuation.resume(returning: snapshot)
+                } else {
+                    continuation.resume(throwing: NSError(
+                        domain: "FirestoreSessionService",
+                        code: -2,
+                        userInfo: [NSLocalizedDescriptionKey: "Missing account deletion query snapshot."]
+                    ))
+                }
+            }
+        }
+    }
+}
+
+private extension WriteBatch {
+    func commitAccountDeletionAsync() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            commit { error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {

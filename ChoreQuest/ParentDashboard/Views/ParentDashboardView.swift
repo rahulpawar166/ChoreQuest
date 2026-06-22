@@ -18,6 +18,7 @@ struct ParentDashboardView: View {
     @State private var selectedHeroForEditing: HeroProfile?
     @State private var selectedQuestForDetails: FamilyQuest?
     @State private var pendingRejectionTarget: ParentRejectionTarget?
+    @AppStorage("appHapticsEnabled") private var hapticsEnabled = true
     private var snapshot: ParentDashboardSnapshot? {
         authStore.familyProfile.map { familyProfile in
             let familyProgress = FamilyProgressSnapshot.resolve(
@@ -61,8 +62,21 @@ struct ParentDashboardView: View {
                         .tabItem {
                             Label("Heroes", systemImage: "person.2")
                         }
+
+                    ChoreQuestSettingsView(
+                        authStore: authStore,
+                        role: .parent,
+                        selectedHero: nil
+                    )
+                    .tag(ParentDashboardTab.settings)
+                    .tabItem {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
                 }
                 .tint(ChoreQuestColors.primary)
+                .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in
+                    hapticsEnabled
+                }
                 .safeAreaInset(edge: .bottom) {
                     if selectedTab == .quests {
                         HStack {
@@ -108,7 +122,7 @@ struct ParentDashboardView: View {
                 ParentDashboardEmptyState(authStore: authStore)
             }
         }
-        .navigationTitle("Chore Quest")
+        .navigationTitle(selectedTab.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let snapshot {
@@ -128,40 +142,27 @@ struct ParentDashboardView: View {
                 }
             }
 
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button(action: {
+            ToolbarItem(placement: .topBarTrailing) {
+                if selectedTab != .settings {
+                    Button(action: {
                     selectedTab = .approvals
-                }) {
-                    Image(systemName: "bell")
-                        .overlay(alignment: .topTrailing) {
-                            if let snapshot, (snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count) > 0 {
-                                Text("\(min(snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count, 9))")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .frame(minWidth: 16, minHeight: 16)
-                                    .padding(2)
-                                    .background(ChoreQuestColors.error)
-                                    .clipShape(Capsule())
-                                    .offset(x: 8, y: -8)
+                    }) {
+                        Image(systemName: "bell")
+                            .overlay(alignment: .topTrailing) {
+                                if let snapshot, (snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count) > 0 {
+                                    Text("\(min(snapshot.pendingApprovals.count + snapshot.pendingRewardClaims.count, 9))")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .frame(minWidth: 16, minHeight: 16)
+                                        .padding(2)
+                                        .background(ChoreQuestColors.error)
+                                        .clipShape(Capsule())
+                                        .offset(x: 8, y: -8)
+                                }
                             }
-                        }
-                }
-
-                Menu {
-                    Button("Switch Device Role", systemImage: "arrow.triangle.2.circlepath") {
-                        Task {
-                            await authStore.clearSelectedRole()
-                        }
                     }
-
-                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
-                        authStore.signOut()
-                    }
-                } label: {
-                    Image(systemName: "gearshape.fill")
                 }
             }
-            .sharedBackgroundVisibility(.hidden)
         }
         .task(id: questLoadKey) {
             guard let familyProfile = authStore.familyProfile else {
@@ -285,22 +286,31 @@ struct ParentDashboardView: View {
 
     @ViewBuilder
     private func dashboardTabContent(snapshot: ParentDashboardSnapshot, tab: ParentDashboardTab) -> some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
-                header(snapshot: snapshot)
+        ZStack {
+            ChoreQuestColors.background
+                .ignoresSafeArea()
 
-                switch tab {
-                case .quests:
-                    questsTab(snapshot: snapshot)
-                case .approvals:
-                    approvalsTab(snapshot: snapshot)
-                case .heroes:
-                    heroesTab(snapshot: snapshot)
+            QuestBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    header(snapshot: snapshot)
+
+                    switch tab {
+                    case .quests:
+                        questsTab(snapshot: snapshot)
+                    case .approvals:
+                        approvalsTab(snapshot: snapshot)
+                    case .heroes:
+                        heroesTab(snapshot: snapshot)
+                    case .settings:
+                        EmptyView()
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, tab == .quests ? 170 : 120)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-            .padding(.bottom, tab == .quests ? 170 : 120)
         }
     }
 

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct QuestBackground: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("appAnimationsEnabled") private var animationsEnabled = true
     @State private var isFloating = false
 
     var body: some View {
@@ -42,7 +43,16 @@ struct QuestBackground: View {
         }
         .ignoresSafeArea()
         .onAppear {
-            guard !reduceMotion else { return }
+            guard animationsEnabled, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
+                isFloating = true
+            }
+        }
+        .onChange(of: animationsEnabled) { _, isEnabled in
+            guard isEnabled, !reduceMotion else {
+                isFloating = false
+                return
+            }
             withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
                 isFloating = true
             }
