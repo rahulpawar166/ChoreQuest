@@ -65,11 +65,7 @@ struct ParentSurfaceCard<Content: View>: View {
             .padding(20)
             .background(ChoreQuestColors.surfaceContainerLowest)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(ChoreQuestColors.surfaceContainer.opacity(0.9), lineWidth: 1.5)
-            )
-            .shadow(color: ChoreQuestColors.primary.opacity(0.08), radius: 18, y: 8)
+            .shadow(color: ChoreQuestColors.primary.opacity(0.11), radius: 0, y: 5)
     }
 }
 
@@ -833,6 +829,7 @@ struct ParentActionPillStyle: ButtonStyle {
             .clipShape(Capsule())
             .shadow(color: background.opacity(0.22), radius: 0, y: configuration.isPressed ? 0 : 4)
             .offset(y: configuration.isPressed ? 3 : 0)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

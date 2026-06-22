@@ -13,6 +13,8 @@ struct KidDashboardView: View {
     @State private var submissionQuest: FamilyQuest?
     @State private var isPresentingHistory = false
     @State private var selectedHeroForEditing: HeroProfile?
+    @State private var isHeroFloating = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var familyProfile: FamilyProfile? {
         authStore.familyProfile
@@ -42,10 +44,10 @@ struct KidDashboardView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 22) {
                             heroHeader(snapshot: snapshot)
-                            rewardsSection(snapshot: snapshot)
-                            availableRewardsSection(snapshot: snapshot, familyProfile: familyProfile)
                             assignedQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
                             claimableQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
+                            rewardsSection(snapshot: snapshot)
+                            availableRewardsSection(snapshot: snapshot, familyProfile: familyProfile)
                             leaderboardSection(snapshot: snapshot)
                         }
                         .padding(.horizontal, 20)
@@ -101,6 +103,12 @@ struct KidDashboardView: View {
                 } label: {
                     Image(systemName: "gearshape.fill")
                 }
+            }
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                isHeroFloating = true
             }
         }
         .task(id: questLoadKey) {
@@ -168,40 +176,96 @@ struct KidDashboardView: View {
     }
 
     private func heroHeader(snapshot: KidDashboardSnapshot) -> some View {
-        ParentSurfaceCard {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(snapshot.hero.levelTitle)
-                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                            .foregroundStyle(ChoreQuestColors.primary)
+        VStack(spacing: 14) {
+            ZStack(alignment: .topTrailing) {
+                ChoreQuestColors.heroGradient
 
-                        Text(snapshot.hero.name)
-                            .font(.custom("Quicksand", size: 28).weight(.bold))
-                            .foregroundStyle(ChoreQuestColors.onSurface)
+                Circle()
+                    .fill(.white.opacity(0.12))
+                    .frame(width: 150, height: 150)
+                    .offset(x: 46, y: -62)
 
-                        Text("\(snapshot.displayFamilyName)'s hero dashboard")
-                            .font(.custom("Quicksand", size: 15).weight(.medium))
-                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(ChoreQuestColors.secondary)
+                    .padding(20)
+                    .rotationEffect(.degrees(isHeroFloating ? 12 : -8))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(spacing: 16) {
+                        Button {
+                            selectedHeroForEditing = snapshot.hero
+                        } label: {
+                            QuestProfileAvatar(
+                                imageBase64: snapshot.hero.imageBase64,
+                                fallbackIconName: snapshot.hero.avatarIconName,
+                                fallbackColorHex: snapshot.hero.avatarColorHex,
+                                size: 78,
+                                borderColor: ChoreQuestColors.secondary
+                            )
+                            .background(.white, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
+                            .shadow(color: .black.opacity(0.16), radius: 0, y: 5)
+                            .offset(y: isHeroFloating ? -4 : 3)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens hero profile editor")
+
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("READY FOR ADVENTURE?")
+                                .font(.custom("Quicksand", size: 11).weight(.heavy))
+                                .foregroundStyle(ChoreQuestColors.secondary)
+                                .tracking(0.8)
+
+                            Text("Hi, \(snapshot.hero.name)! 👋")
+                                .font(.custom("Quicksand", size: 28).weight(.bold))
+                                .foregroundStyle(.white)
+
+                            Text(snapshot.hero.levelTitle)
+                                .font(.custom("Quicksand", size: 13).weight(.bold))
+                                .foregroundStyle(.white.opacity(0.86))
+                        }
                     }
 
-                    Spacer()
-
-                    VStack(spacing: 10) {
-                        statBadge(title: "Assigned", value: "\(snapshot.assignedQuestCount)", tint: ChoreQuestColors.primary)
-                        statBadge(title: "Open", value: "\(snapshot.claimableQuestCount)", tint: ChoreQuestColors.secondaryText)
+                    HStack(spacing: 10) {
+                        heroStat(icon: "bolt.fill", value: "\(snapshot.heroXP)", label: "XP", color: ChoreQuestColors.secondary)
+                        heroStat(icon: "checkmark.seal.fill", value: "\(snapshot.heroApprovedQuestCount)", label: "DONE", color: ChoreQuestColors.tertiaryFixed)
+                        heroStat(icon: "map.fill", value: "\(snapshot.assignedQuestCount)", label: "QUESTS", color: ChoreQuestColors.skyContainer)
                     }
                 }
+                .padding(20)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .stroke(.white.opacity(0.26), lineWidth: 2)
+            }
+            .shadow(color: ChoreQuestColors.primary.opacity(0.28), radius: 0, y: 7)
+            .shadow(color: ChoreQuestColors.primary.opacity(0.18), radius: 22, y: 12)
 
-                Text("Tap your hero token to edit your profile. Quest progress, proof uploads, and rewards build on top of these Firestore quests.")
-                    .font(.custom("Quicksand", size: 14).weight(.medium))
-                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-
-                if snapshot.heroes.count > 1 {
-                    heroSwitcher(snapshot: snapshot)
-                }
+            if snapshot.heroes.count > 1 {
+                heroSwitcher(snapshot: snapshot)
             }
         }
+    }
+
+    private func heroStat(icon: String, value: String, label: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+
+            Text(value)
+                .font(.custom("Quicksand", size: 16).weight(.bold))
+                .foregroundStyle(.white)
+
+            Text(label)
+                .font(.custom("Quicksand", size: 9).weight(.heavy))
+                .foregroundStyle(.white.opacity(0.74))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.14))
+        .clipShape(Capsule())
     }
 
     private func heroSwitcher(snapshot: KidDashboardSnapshot) -> some View {
@@ -240,7 +304,7 @@ struct KidDashboardView: View {
 
     private func assignedQuestsSection(snapshot: KidDashboardSnapshot, familyProfile: FamilyProfile) -> some View {
         VStack(spacing: 16) {
-            ParentSectionHeader(title: "Active Quests", actionTitle: nil, action: nil)
+            KidSectionHeader(title: "Your Adventures", subtitle: "Pick a quest and earn XP!", icon: "map.fill", color: ChoreQuestColors.primary)
 
             if snapshot.assignedQuests.isEmpty {
                 KidDashboardEmptyCard(
@@ -269,7 +333,7 @@ struct KidDashboardView: View {
 
     private func claimableQuestsSection(snapshot: KidDashboardSnapshot, familyProfile: FamilyProfile) -> some View {
         VStack(spacing: 16) {
-            ParentSectionHeader(title: "Claimable Bounties", actionTitle: nil, action: nil)
+            KidSectionHeader(title: "Bonus Quests", subtitle: "Grab one before another hero does!", icon: "flag.checkered", color: ChoreQuestColors.coral)
 
             if snapshot.claimableQuests.isEmpty {
                 KidDashboardEmptyCard(
@@ -294,7 +358,7 @@ struct KidDashboardView: View {
 
     private func rewardsSection(snapshot: KidDashboardSnapshot) -> some View {
         VStack(spacing: 16) {
-            ParentSectionHeader(title: "Hero Progress", actionTitle: nil, action: nil)
+            KidSectionHeader(title: "Power-Up Progress", subtitle: "Every quest makes you stronger", icon: "bolt.fill", color: ChoreQuestColors.secondaryText)
 
             FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
 
@@ -357,6 +421,7 @@ struct KidDashboardView: View {
                             .frame(width: 312)
                         }
                     }
+                    .padding(.vertical, 12)
                 }
             }
         }
@@ -490,8 +555,10 @@ private struct KidRewardCard: View {
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                 }
 
-                Button(buttonTitle) {
+                Button {
                     isShowingClaimConfirmation = true
+                } label: {
+                    Label(buttonTitle, systemImage: latestClaim?.status == .fulfilled ? "checkmark.seal.fill" : "gift.fill")
                 }
                 .buttonStyle(
                     ParentActionPillStyle(
@@ -555,12 +622,12 @@ private struct KidAssignedQuestCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .center, spacing: 16) {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(ChoreQuestColors.primaryFixed)
+                        .fill(categoryColors.background)
                         .frame(width: 62, height: 62)
                         .overlay {
                             Image(systemName: quest.category.iconName)
                                 .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(ChoreQuestColors.primary)
+                                .foregroundStyle(categoryColors.foreground)
                         }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -615,8 +682,10 @@ private struct KidAssignedQuestCard: View {
                 }
 
                 HStack(spacing: 12) {
-                    Button(submitButtonTitle) {
+                    Button {
                         onSubmitProof()
+                    } label: {
+                        Label(submitButtonTitle, systemImage: isDailyQuestLockedForToday ? "checkmark.seal.fill" : "camera.fill")
                     }
                     .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
                     .disabled(!canSubmitProof)
@@ -702,6 +771,19 @@ private struct KidAssignedQuestCard: View {
 
         return submission == nil ? "Send Proof" : "Update Proof"
     }
+
+    private var categoryColors: (background: Color, foreground: Color) {
+        switch quest.category {
+        case .bedroom, .drawingRoom:
+            return (ChoreQuestColors.primaryFixed, ChoreQuestColors.primary)
+        case .kitchen, .laundry:
+            return (ChoreQuestColors.coralContainer, ChoreQuestColors.coral)
+        case .school, .basement:
+            return (ChoreQuestColors.skyContainer, Color(hex: 0x087a9f))
+        case .frontYard, .backYard:
+            return (ChoreQuestColors.tertiaryFixed, ChoreQuestColors.tertiary)
+        }
+    }
 }
 
 private struct KidClaimableQuestCard: View {
@@ -743,14 +825,47 @@ private struct KidClaimableQuestCard: View {
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                 }
 
-                Button("Claim Quest") {
+                Button {
                     Task { await onClaim() }
+                } label: {
+                    Label("Start Adventure", systemImage: "flag.fill")
                 }
                 .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
                 .disabled(isUpdating)
             }
         }
         .opacity(isUpdating ? 0.72 : 1)
+    }
+}
+
+private struct KidSectionHeader: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(color)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .rotationEffect(.degrees(-4))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.custom("Quicksand", size: 22).weight(.bold))
+                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                Text(subtitle)
+                    .font(.custom("Quicksand", size: 12).weight(.semibold))
+                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+            }
+
+            Spacer()
+        }
     }
 }
 

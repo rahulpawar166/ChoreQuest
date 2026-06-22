@@ -8,19 +8,19 @@
 import SwiftUI
 
 enum ChoreQuestColors {
-    static let background = Color(hex: 0xf8f9ff)
-    static let surfaceContainer = Color(hex: 0xe5eeff)
-    static let surfaceContainerLow = Color(hex: 0xeff4ff)
-    static let surfaceContainerHigh = Color(hex: 0xdce9ff)
-    static let surfaceContainerHighest = Color(hex: 0xd3e4fe)
+    static let background = Color(hex: 0xf7f5ff)
+    static let surfaceContainer = Color(hex: 0xe9e2ff)
+    static let surfaceContainerLow = Color(hex: 0xf1edff)
+    static let surfaceContainerHigh = Color(hex: 0xded5ff)
+    static let surfaceContainerHighest = Color(hex: 0xd2c6ff)
     static let surfaceContainerLowest = Color(hex: 0xffffff)
     static let onSurface = Color(hex: 0x0b1c30)
     static let onSurfaceVariant = Color(hex: 0x4a4455)
-    static let primary = Color(hex: 0x630ed4)
-    static let primaryContainer = Color(hex: 0x7c3aed)
+    static let primary = Color(hex: 0x6c35e8)
+    static let primaryContainer = Color(hex: 0x8557f2)
     static let primaryFixed = Color(hex: 0xeaddff)
     static let primaryShadow = Color(hex: 0x4c0bb3)
-    static let secondary = Color(hex: 0xffc329)
+    static let secondary = Color(hex: 0xffcc3d)
     static let secondaryText = Color(hex: 0x6f5100)
     static let tertiary = Color(hex: 0x005b3d)
     static let tertiaryContainer = Color(hex: 0x007650)
@@ -31,6 +31,16 @@ enum ChoreQuestColors {
     static let error = Color(hex: 0xba1a1a)
     static let errorText = Color(hex: 0x93000a)
     static let errorContainer = Color(hex: 0xffdad6)
+    static let sky = Color(hex: 0x42c9f5)
+    static let skyContainer = Color(hex: 0xd9f6ff)
+    static let coral = Color(hex: 0xff6b6b)
+    static let coralContainer = Color(hex: 0xffe3e3)
+    static let pink = Color(hex: 0xf062c0)
+    static let heroGradient = LinearGradient(
+        colors: [Color(hex: 0x6c35e8), Color(hex: 0x9b5cf6)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 extension Color {

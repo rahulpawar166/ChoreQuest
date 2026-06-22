@@ -101,6 +101,7 @@ struct QuestPrimaryButtonStyle: ButtonStyle {
             .clipShape(Capsule())
             .shadow(color: ChoreQuestColors.primaryShadow, radius: 0, y: configuration.isPressed ? 0 : 4)
             .offset(y: configuration.isPressed ? 4 : 0)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
