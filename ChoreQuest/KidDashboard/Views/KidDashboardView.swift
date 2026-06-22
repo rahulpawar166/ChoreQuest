@@ -14,6 +14,7 @@ struct KidDashboardView: View {
     @State private var isPresentingHistory = false
     @State private var selectedHeroForEditing: HeroProfile?
     @State private var isHeroFloating = false
+    @State private var selectedTab: KidDashboardTab = .adventures
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var familyProfile: FamilyProfile? {
@@ -28,6 +29,7 @@ struct KidDashboardView: View {
             submissions: store.submissions,
             rewards: store.rewards,
             claims: store.rewardClaims,
+            contributions: store.contributions,
             selectedHeroID: authStore.userProfile?.selectedHeroID
         )
     }
@@ -41,19 +43,41 @@ struct KidDashboardView: View {
 
             if let familyProfile {
                 if let snapshot {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 22) {
-                            heroHeader(snapshot: snapshot)
-                            assignedQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
-                            claimableQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
-                            rewardsSection(snapshot: snapshot)
-                            availableRewardsSection(snapshot: snapshot, familyProfile: familyProfile)
-                            leaderboardSection(snapshot: snapshot)
+                    TabView(selection: $selectedTab) {
+                        dashboardTabContent(
+                            .adventures,
+                            snapshot: snapshot,
+                            familyProfile: familyProfile
+                        )
+                        .tag(KidDashboardTab.adventures)
+                        .tabItem {
+                            Label("Adventures", systemImage: "map.fill")
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 18)
-                        .padding(.bottom, 40)
+
+                        dashboardTabContent(
+                            .rewards,
+                            snapshot: snapshot,
+                            familyProfile: familyProfile
+                        )
+                        .tag(KidDashboardTab.rewards)
+                        .tabItem {
+                            Label("Rewards", systemImage: "gift.fill")
+                        }
+
+                        dashboardTabContent(
+                            .team,
+                            snapshot: snapshot,
+                            familyProfile: familyProfile
+                        )
+                        .tag(KidDashboardTab.team)
+                        .tabItem {
+                            Label("Team", systemImage: "person.3.fill")
+                        }
                     }
+                    .tint(ChoreQuestColors.primary)
+                    .toolbarBackground(ChoreQuestColors.surfaceContainerLowest, for: .tabBar)
+                    .toolbarBackground(.visible, for: .tabBar)
+                    .sensoryFeedback(.selection, trigger: selectedTab)
                 } else {
                     KidDashboardLinkRequiredView(authStore: authStore)
                 }
@@ -61,7 +85,7 @@ struct KidDashboardView: View {
                 KidDashboardLinkRequiredView(authStore: authStore)
             }
         }
-        .navigationTitle("Hero's Quest Log")
+        .navigationTitle(selectedTab.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let snapshot {
@@ -171,6 +195,40 @@ struct KidDashboardView: View {
                     avatar: avatar,
                     imageData: imageData
                 )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func dashboardTabContent(
+        _ tab: KidDashboardTab,
+        snapshot: KidDashboardSnapshot,
+        familyProfile: FamilyProfile
+    ) -> some View {
+        ZStack {
+            ChoreQuestColors.background
+                .ignoresSafeArea()
+
+            QuestBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 22) {
+                    switch tab {
+                    case .adventures:
+                        heroHeader(snapshot: snapshot)
+                        assignedQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
+                        claimableQuestsSection(snapshot: snapshot, familyProfile: familyProfile)
+                    case .rewards:
+                        personalProgressSection(snapshot: snapshot)
+                        availableRewardsSection(snapshot: snapshot, familyProfile: familyProfile)
+                    case .team:
+                        familyProgressSection(snapshot: snapshot)
+                        leaderboardSection(snapshot: snapshot)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 30)
             }
         }
     }
@@ -356,11 +414,9 @@ struct KidDashboardView: View {
         }
     }
 
-    private func rewardsSection(snapshot: KidDashboardSnapshot) -> some View {
+    private func personalProgressSection(snapshot: KidDashboardSnapshot) -> some View {
         VStack(spacing: 16) {
-            KidSectionHeader(title: "Power-Up Progress", subtitle: "Every quest makes you stronger", icon: "bolt.fill", color: ChoreQuestColors.secondaryText)
-
-            FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
+            KidSectionHeader(title: "Your Power-Ups", subtitle: "Spend XP on rewards you've earned", icon: "bolt.fill", color: ChoreQuestColors.secondaryText)
 
             ParentSurfaceCard {
                 VStack(alignment: .leading, spacing: 16) {
@@ -372,6 +428,33 @@ struct KidDashboardView: View {
                     Text("Track your earned XP and how many quests a parent has approved.")
                         .font(.custom("Quicksand", size: 14).weight(.medium))
                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                }
+            }
+        }
+    }
+
+    private func familyProgressSection(snapshot: KidDashboardSnapshot) -> some View {
+        VStack(spacing: 16) {
+            KidSectionHeader(title: "Family Mission", subtitle: "Work together to unlock the team reward", icon: "person.3.fill", color: ChoreQuestColors.tertiary)
+
+            FamilyRewardProgressCard(progress: snapshot.familyProgress.rewardProgress)
+
+            if let reward = familyProfile?.familyReward,
+               let progress = snapshot.familyProgress.rewardProgress {
+                FamilyContributionCard(
+                    rewardTitle: reward.title,
+                    availableXP: snapshot.heroXP,
+                    remainingXP: progress.remainingXP,
+                    isContributing: store.isContributingXP
+                ) { amount in
+                    guard let familyProfile else { return false }
+                    return await store.contributeXP(
+                        amount: amount,
+                        availableXP: snapshot.heroXP,
+                        reward: reward,
+                        hero: snapshot.hero,
+                        familyID: familyProfile.id
+                    )
                 }
             }
         }
@@ -466,6 +549,145 @@ struct KidDashboardView: View {
         let familyID = familyProfile?.id ?? "no-family"
         let selectedHeroID = authStore.userProfile?.selectedHeroID ?? "no-hero"
         return "\(familyID)-\(selectedHeroID)"
+    }
+}
+
+private enum KidDashboardTab: Hashable {
+    case adventures
+    case rewards
+    case team
+
+    var navigationTitle: String {
+        switch self {
+        case .adventures: return "Hero Adventures"
+        case .rewards: return "Reward Shop"
+        case .team: return "Family Team"
+        }
+    }
+}
+
+private struct FamilyContributionCard: View {
+    let rewardTitle: String
+    let availableXP: Int
+    let remainingXP: Int
+    let isContributing: Bool
+    let onContribute: (Int) async -> Bool
+
+    @State private var selectedXP = 0.0
+    @State private var isConfirmingContribution = false
+
+    private var maximumContribution: Int {
+        min(availableXP, remainingXP)
+    }
+
+    private var snapInterval: Double {
+        maximumContribution >= 10 ? 5 : 1
+    }
+
+    private var contributionBinding: Binding<Double> {
+        Binding(
+            get: { selectedXP },
+            set: { newValue in
+                let snappedValue = (newValue / snapInterval).rounded() * snapInterval
+                selectedXP = min(max(snappedValue, 0), Double(maximumContribution))
+            }
+        )
+    }
+
+    var body: some View {
+        ParentSurfaceCard {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    Image(systemName: "hand.raised.fingers.spread.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 46, height: 46)
+                        .background(ChoreQuestColors.tertiary)
+                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Help the Family")
+                            .font(.custom("Quicksand", size: 19).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurface)
+
+                        Text("Choose how much XP to add to \(rewardTitle).")
+                            .font(.custom("Quicksand", size: 12).weight(.semibold))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    }
+                }
+
+                if maximumContribution > 0 {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(Int(selectedXP)) XP")
+                            .font(.custom("Quicksand", size: 28).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.primary)
+
+                        Spacer()
+
+                        Text("\(availableXP) XP available")
+                            .font(.custom("Quicksand", size: 12).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    }
+
+                    Slider(
+                        value: contributionBinding,
+                        in: 0...Double(maximumContribution)
+                    ) {
+                        Text("XP contribution")
+                    } minimumValueLabel: {
+                        Text("0")
+                    } maximumValueLabel: {
+                        Text("\(maximumContribution)")
+                    }
+                    .font(.custom("Quicksand", size: 11).weight(.bold))
+                    .tint(ChoreQuestColors.primary)
+                    .accessibilityValue("\(Int(selectedXP)) XP")
+
+                    Text("Contributed XP moves from your personal balance into the family goal.")
+                        .font(.custom("Quicksand", size: 12).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+                    Button {
+                        isConfirmingContribution = true
+                    } label: {
+                        Label(
+                            isContributing ? "Adding XP..." : "Contribute \(Int(selectedXP)) XP",
+                            systemImage: "heart.fill"
+                        )
+                    }
+                    .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.primary, foreground: .white))
+                    .disabled(selectedXP < 1 || isContributing)
+                    .opacity(selectedXP < 1 ? 0.55 : 1)
+                } else if remainingXP == 0 {
+                    Label("Family reward unlocked!", systemImage: "party.popper.fill")
+                        .font(.custom("Quicksand", size: 15).weight(.bold))
+                        .foregroundStyle(ChoreQuestColors.tertiary)
+                } else {
+                    Text("Complete a quest to earn XP you can contribute.")
+                        .font(.custom("Quicksand", size: 14).weight(.semibold))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                }
+            }
+        }
+        .onAppear(perform: resetSelection)
+        .onChange(of: maximumContribution) { _, _ in resetSelection() }
+        .alert("Contribute XP?", isPresented: $isConfirmingContribution) {
+            Button("Cancel", role: .cancel) {}
+            Button("Contribute") {
+                let amount = Int(selectedXP)
+                Task {
+                    if await onContribute(amount) {
+                        selectedXP = 0
+                    }
+                }
+            }
+        } message: {
+            Text("Add \(Int(selectedXP)) XP to \(rewardTitle)? Contributions cannot be moved back to your personal balance.")
+        }
+    }
+
+    private func resetSelection() {
+        selectedXP = Double(min(maximumContribution, maximumContribution >= 10 ? 10 : maximumContribution))
     }
 }
 

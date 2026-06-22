@@ -168,22 +168,27 @@ final class FirestoreSessionService {
         title: String,
         goalXP: Int
     ) async throws -> FamilyProfile {
+        let reference = db.collection("families").document(familyID)
+        let existingSnapshot = try await reference.getDocumentAsync()
+        let existingReward = existingSnapshot.data()?["familyReward"] as? [String: Any]
+        let rewardID = existingReward?["id"] as? String ?? UUID().uuidString
         let data: [String: Any] = [
             "familyReward": [
+                "id": rewardID,
                 "title": title.trimmingCharacters(in: .whitespacesAndNewlines),
                 "goalXP": goalXP
             ],
             "updatedAt": FieldValue.serverTimestamp()
         ]
 
-        try await db.collection("families").document(familyID).setDataAsync(data, merge: true)
-        let snapshot = try await db.collection("families").document(familyID).getDocumentAsync()
+        try await reference.setDataAsync(data, merge: true)
+        let snapshot = try await reference.getDocumentAsync()
         return familyProfileFromSnapshot(snapshot, familyID: familyID) ?? FamilyProfile(
             id: familyID,
             familyName: "",
             crestName: "Castle Crest",
             parentImageBase64: nil,
-            familyReward: FamilyGoalReward(title: title, goalXP: goalXP),
+            familyReward: FamilyGoalReward(id: rewardID, title: title, goalXP: goalXP),
             heroes: []
         )
     }
@@ -271,7 +276,11 @@ final class FirestoreSessionService {
             return nil
         }
 
-        return FamilyGoalReward(title: title, goalXP: goalXP)
+        return FamilyGoalReward(
+            id: data["id"] as? String ?? "legacy-family-reward",
+            title: title,
+            goalXP: goalXP
+        )
     }
 
     private func heroProfileFromDraft(_ draft: HeroProfileDraft) -> HeroProfile {

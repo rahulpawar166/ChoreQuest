@@ -18,10 +18,17 @@ struct FamilyProgressSnapshot {
         availableXPByHeroID: [:]
     )
 
-    static func resolve(familyProfile: FamilyProfile, submissions: [KidQuestSubmission], quests: [FamilyQuest] = [], claims: [RewardClaim] = []) -> FamilyProgressSnapshot {
+    static func resolve(
+        familyProfile: FamilyProfile,
+        submissions: [KidQuestSubmission],
+        quests: [FamilyQuest] = [],
+        claims: [RewardClaim] = [],
+        contributions: [FamilyXPContribution] = []
+    ) -> FamilyProgressSnapshot {
         let approvedSubmissions = submissions.filter { $0.status == .approved }
         let questXPByID = Dictionary(uniqueKeysWithValues: quests.map { ($0.id, $0.xpValue) })
         let activeClaims = claims.filter { $0.status != .rejected }
+        let activeContributions = contributions.filter { $0.rewardID == familyProfile.familyReward?.id }
 
         let xpByHeroID = approvedSubmissions.reduce(into: [String: Int]()) { partialResult, submission in
             partialResult[submission.heroID, default: 0] += submission.xpAwarded(fallbackXP: questXPByID[submission.questID] ?? 0)
@@ -29,12 +36,20 @@ struct FamilyProgressSnapshot {
         let spentXPByHeroID = activeClaims.reduce(into: [String: Int]()) { partialResult, claim in
             partialResult[claim.heroID, default: 0] += claim.rewardCostXP
         }
+        let contributedXPByHeroID = contributions.reduce(into: [String: Int]()) { partialResult, contribution in
+            partialResult[contribution.heroID, default: 0] += contribution.amountXP
+        }
 
         let approvedCountByHeroID = approvedSubmissions.reduce(into: [String: Int]()) { partialResult, submission in
             partialResult[submission.heroID, default: 0] += 1
         }
         let availableXPByHeroID = familyProfile.heroes.reduce(into: [String: Int]()) { partialResult, hero in
-            partialResult[hero.id] = max(xpByHeroID[hero.id, default: 0] - spentXPByHeroID[hero.id, default: 0], 0)
+            partialResult[hero.id] = max(
+                xpByHeroID[hero.id, default: 0]
+                    - spentXPByHeroID[hero.id, default: 0]
+                    - contributedXPByHeroID[hero.id, default: 0],
+                0
+            )
         }
 
         let leaderboard = familyProfile.heroes.map { hero in
@@ -45,7 +60,7 @@ struct FamilyProgressSnapshot {
                 imageBase64: hero.imageBase64,
                 avatarIconName: hero.avatarIconName,
                 avatarColorHex: hero.avatarColorHex,
-                totalXP: availableXPByHeroID[hero.id, default: 0],
+                totalXP: xpByHeroID[hero.id, default: 0],
                 completedQuestCount: approvedCountByHeroID[hero.id, default: 0]
             )
         }
@@ -67,7 +82,7 @@ struct FamilyProgressSnapshot {
             return updatedEntry
         }
 
-        let familyXP = leaderboard.reduce(0) { $0 + $1.totalXP }
+        let familyXP = activeContributions.reduce(0) { $0 + $1.amountXP }
 
         return FamilyProgressSnapshot(
             rewardProgress: familyProfile.familyReward.map {
@@ -77,6 +92,16 @@ struct FamilyProgressSnapshot {
             availableXPByHeroID: availableXPByHeroID
         )
     }
+}
+
+struct FamilyXPContribution: Identifiable, Hashable {
+    let id: String
+    let familyID: String
+    let rewardID: String
+    let heroID: String
+    let heroName: String
+    let amountXP: Int
+    let createdAt: Date?
 }
 
 struct FamilyRewardProgress {

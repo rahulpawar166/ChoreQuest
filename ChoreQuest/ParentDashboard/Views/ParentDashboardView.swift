@@ -24,7 +24,8 @@ struct ParentDashboardView: View {
                 familyProfile: familyProfile,
                 submissions: dashboardStore.submissions,
                 quests: dashboardStore.quests,
-                claims: dashboardStore.rewardClaims
+                claims: dashboardStore.rewardClaims,
+                contributions: dashboardStore.contributions
             )
 
             return ParentDashboardSnapshot(

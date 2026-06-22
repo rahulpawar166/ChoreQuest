@@ -15,10 +15,12 @@ final class KidDashboardStore: ObservableObject {
     @Published private(set) var submissions: [KidQuestSubmission] = []
     @Published private(set) var rewards: [FamilyReward] = []
     @Published private(set) var rewardClaims: [RewardClaim] = []
+    @Published private(set) var contributions: [FamilyXPContribution] = []
     @Published private(set) var isLoading = false
     @Published private(set) var isUpdatingQuest = false
     @Published private(set) var isSubmittingProof = false
     @Published private(set) var isClaimingReward = false
+    @Published private(set) var isContributingXP = false
     @Published var errorMessage: String?
 
     private let questService = ParentQuestService()
@@ -28,12 +30,14 @@ final class KidDashboardStore: ObservableObject {
     private var submissionListener: ListenerRegistration?
     private var rewardListener: ListenerRegistration?
     private var rewardClaimListener: ListenerRegistration?
+    private var contributionListener: ListenerRegistration?
     private var activeFamilyID: String?
 
     deinit {
         submissionListener?.remove()
         rewardListener?.remove()
         rewardClaimListener?.remove()
+        contributionListener?.remove()
     }
 
     func loadDashboard(familyID: String, heroID: String, heroes: [HeroProfile]) async {
@@ -112,11 +116,41 @@ final class KidDashboardStore: ObservableObject {
         }
     }
 
+    func contributeXP(
+        amount: Int,
+        availableXP: Int,
+        reward: FamilyGoalReward,
+        hero: HeroProfile,
+        familyID: String
+    ) async -> Bool {
+        guard amount > 0, amount <= availableXP else {
+            errorMessage = "Choose an amount from your available XP."
+            return false
+        }
+
+        isContributingXP = true
+        defer { isContributingXP = false }
+
+        do {
+            try await progressService.contributeXP(
+                familyID: familyID,
+                rewardID: reward.id,
+                hero: hero,
+                amountXP: amount
+            )
+            return true
+        } catch {
+            errorMessage = "We couldn't add your XP to the family reward right now."
+            return false
+        }
+    }
+
     private func startRealtimeListenersIfNeeded(familyID: String) {
         guard activeFamilyID != familyID else { return }
         submissionListener?.remove()
         rewardListener?.remove()
         rewardClaimListener?.remove()
+        contributionListener?.remove()
         activeFamilyID = familyID
         submissionListener = progressService.startSubmissionsListener(familyID: familyID) { [weak self] result in
             guard let self else { return }
@@ -153,6 +187,19 @@ final class KidDashboardStore: ObservableObject {
                     self.rewardClaims = claims
                 case .failure:
                     self.errorMessage = "We couldn't load reward claims right now."
+                }
+            }
+        }
+
+        contributionListener = progressService.startContributionsListener(familyID: familyID) { [weak self] result in
+            guard let self else { return }
+
+            Task { @MainActor in
+                switch result {
+                case .success(let contributions):
+                    self.contributions = contributions
+                case .failure:
+                    self.errorMessage = "We couldn't load family contributions right now."
                 }
             }
         }

@@ -15,6 +15,7 @@ struct FamilyProfile {
 }
 
 struct FamilyGoalReward: Hashable {
+    let id: String
     let title: String
     let goalXP: Int
 }

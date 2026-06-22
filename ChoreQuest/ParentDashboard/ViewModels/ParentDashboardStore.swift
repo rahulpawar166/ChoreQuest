@@ -15,6 +15,7 @@ final class ParentDashboardStore: ObservableObject {
     @Published private(set) var submissions: [KidQuestSubmission] = []
     @Published private(set) var rewards: [FamilyReward] = []
     @Published private(set) var rewardClaims: [RewardClaim] = []
+    @Published private(set) var contributions: [FamilyXPContribution] = []
     @Published private(set) var pendingApprovals: [ParentApproval] = []
     @Published private(set) var isLoadingQuests = false
     @Published private(set) var isSavingQuest = false
@@ -33,12 +34,14 @@ final class ParentDashboardStore: ObservableObject {
     private let rewardService = RewardService()
     private var submissionListener: ListenerRegistration?
     private var rewardClaimListener: ListenerRegistration?
+    private var contributionListener: ListenerRegistration?
     private var currentFamilyID: String?
     private var currentHeroes: [HeroProfile] = []
 
     deinit {
         submissionListener?.remove()
         rewardClaimListener?.remove()
+        contributionListener?.remove()
     }
 
     func loadQuests(familyID: String, heroes: [HeroProfile]) async {
@@ -162,6 +165,7 @@ final class ParentDashboardStore: ObservableObject {
             currentHeroes = heroes
             attachSubmissionsListener(familyID: familyID)
             attachRewardClaimsListener(familyID: familyID)
+            attachContributionsListener(familyID: familyID)
             return
         }
 
@@ -173,9 +177,11 @@ final class ParentDashboardStore: ObservableObject {
         }
         submissionListener?.remove()
         rewardClaimListener?.remove()
+        contributionListener?.remove()
         currentFamilyID = familyID
         attachSubmissionsListener(familyID: familyID)
         attachRewardClaimsListener(familyID: familyID)
+        attachContributionsListener(familyID: familyID)
     }
 
     private func attachSubmissionsListener(familyID: String) {
@@ -236,6 +242,21 @@ final class ParentDashboardStore: ObservableObject {
                     self.rewardClaims = claims
                 case .failure:
                     self.errorMessage = "We couldn't load reward claims right now."
+                }
+            }
+        }
+    }
+
+    private func attachContributionsListener(familyID: String) {
+        contributionListener = progressService.startContributionsListener(familyID: familyID) { [weak self] result in
+            guard let self else { return }
+
+            Task { @MainActor in
+                switch result {
+                case .success(let contributions):
+                    self.contributions = contributions
+                case .failure:
+                    self.errorMessage = "We couldn't load family contributions right now."
                 }
             }
         }

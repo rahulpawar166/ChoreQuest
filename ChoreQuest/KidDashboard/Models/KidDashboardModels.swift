@@ -34,7 +34,7 @@ struct KidDashboardSnapshot {
         claimableQuests.count
     }
 
-    static func resolve(from familyProfile: FamilyProfile, quests: [FamilyQuest], submissions: [KidQuestSubmission], rewards: [FamilyReward], claims: [RewardClaim], selectedHeroID: String?) -> KidDashboardSnapshot? {
+    static func resolve(from familyProfile: FamilyProfile, quests: [FamilyQuest], submissions: [KidQuestSubmission], rewards: [FamilyReward], claims: [RewardClaim], contributions: [FamilyXPContribution], selectedHeroID: String?) -> KidDashboardSnapshot? {
         let hero = familyProfile.heroes.first(where: { $0.id == selectedHeroID }) ?? familyProfile.heroes.first
         guard let hero else {
             return nil
@@ -71,7 +71,8 @@ struct KidDashboardSnapshot {
             familyProfile: familyProfile,
             submissions: submissions,
             quests: quests,
-            claims: claims
+            claims: claims,
+            contributions: contributions
         )
 
         let heroEntry = familyProgress.leaderboard.first(where: { $0.id == hero.id })
@@ -95,7 +96,7 @@ struct KidDashboardSnapshot {
             familyProgress: familyProgress,
             rewards: rewards.filter(\.isActive),
             rewardClaims: claims.filter { $0.heroID == hero.id }.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) },
-            heroXP: heroEntry?.totalXP ?? 0,
+            heroXP: familyProgress.availableXPByHeroID[hero.id, default: 0],
             heroApprovedQuestCount: heroEntry?.completedQuestCount ?? 0,
             recentApprovedRewards: recentApprovedRewards
         )
