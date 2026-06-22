@@ -19,5 +19,7 @@
 	<string>ChoreQuest uses the camera so kids can take a proof photo for completed chores.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ChoreQuest uses your photo library so kids can attach proof photos for completed chores.</string>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

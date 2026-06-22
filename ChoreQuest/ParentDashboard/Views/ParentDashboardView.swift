@@ -160,6 +160,7 @@ struct ParentDashboardView: View {
                     Image(systemName: "gearshape.fill")
                 }
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .task(id: questLoadKey) {
             guard let familyProfile = authStore.familyProfile else {
