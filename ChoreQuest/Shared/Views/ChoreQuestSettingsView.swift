@@ -17,7 +17,6 @@ struct ChoreQuestSettingsView: View {
     @AppStorage("appAnimationsEnabled") private var animationsEnabled = true
     @AppStorage("appHapticsEnabled") private var hapticsEnabled = true
     @State private var presentedSheet: SettingsSheet?
-    @State private var isPresentingDeleteAccount = false
     @State private var isConfirmingRoleSwitch = false
     @State private var isConfirmingSignOut = false
 
@@ -80,9 +79,6 @@ struct ChoreQuestSettingsView: View {
                     await authStore.clearFamilyReward()
                 }
             }
-        }
-        .sheet(isPresented: $isPresentingDeleteAccount) {
-            DeleteAccountView(authStore: authStore)
         }
         .alert("Switch Device Mode?", isPresented: $isConfirmingRoleSwitch) {
             Button("Cancel", role: .cancel) {}
@@ -251,27 +247,25 @@ struct ChoreQuestSettingsView: View {
                 isConfirmingRoleSwitch = true
             }
 
-            Button(role: .destructive) {
-                isConfirmingSignOut = true
-            } label: {
-                settingsRow(
-                    title: "Sign Out",
-                    subtitle: role == .kid ? "Ask a parent before signing out." : "Remove the family account from this device.",
-                    icon: "rectangle.portrait.and.arrow.right",
-                    color: ChoreQuestColors.error,
-                    titleColor: ChoreQuestColors.error
-                )
-            }
-            .buttonStyle(.plain)
-
             if role == .parent {
-                Button(role: .destructive) {
-                    isPresentingDeleteAccount = true
+                NavigationLink {
+                    ParentAccountSettingsView(authStore: authStore)
                 } label: {
                     settingsRow(
-                        title: "Delete Account",
-                        subtitle: "Permanently delete the account and all family data.",
-                        icon: "trash.fill",
+                        title: "Parent Account",
+                        subtitle: "Manage sign-in, account access, and family data.",
+                        icon: "person.crop.circle.badge.checkmark",
+                        color: ChoreQuestColors.primary
+                    )
+                }
+            } else {
+                Button(role: .destructive) {
+                    isConfirmingSignOut = true
+                } label: {
+                    settingsRow(
+                        title: "Sign Out",
+                        subtitle: "Ask a parent before signing out.",
+                        icon: "rectangle.portrait.and.arrow.right",
                         color: ChoreQuestColors.error,
                         titleColor: ChoreQuestColors.error
                     )
@@ -382,19 +376,116 @@ private enum SettingsSheet: Identifiable {
     }
 }
 
+private struct ParentAccountSettingsView: View {
+    @ObservedObject var authStore: AuthStore
+
+    @State private var isConfirmingSignOut = false
+    @State private var isPresentingDeleteAccount = false
+
+    var body: some View {
+        Form {
+            Section("Parent Account") {
+                LabeledContent("Email") {
+                    Text(authStore.userProfile?.email ?? "Not available")
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        .multilineTextAlignment(.trailing)
+                }
+
+                Button(role: .destructive) {
+                    isConfirmingSignOut = true
+                } label: {
+                    accountRow(
+                        title: "Sign Out",
+                        subtitle: "Remove the family account from this device.",
+                        icon: "rectangle.portrait.and.arrow.right"
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    isPresentingDeleteAccount = true
+                } label: {
+                    accountRow(
+                        title: "Delete Account",
+                        subtitle: "Permanently delete the account and all associated family data.",
+                        icon: "trash.fill"
+                    )
+                }
+                .buttonStyle(.plain)
+            } header: {
+                Text("Account Data")
+            } footer: {
+                Text("Account deletion requires the parent password and an additional confirmation.")
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background {
+            ZStack {
+                ChoreQuestColors.background
+                QuestBackground()
+            }
+            .ignoresSafeArea()
+        }
+        .navigationTitle("Parent Account")
+        .navigationBarTitleDisplayMode(.large)
+        .sheet(isPresented: $isPresentingDeleteAccount) {
+            DeleteAccountView(authStore: authStore)
+        }
+        .alert("Sign Out?", isPresented: $isConfirmingSignOut) {
+            Button("Cancel", role: .cancel) {}
+            Button("Sign Out", role: .destructive, action: authStore.signOut)
+        } message: {
+            Text("This device will need the family account credentials to sign in again.")
+        }
+    }
+
+    private func accountRow(title: String, subtitle: String, icon: String) -> some View {
+        HStack(spacing: 13) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(ChoreQuestColors.error)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.custom("Quicksand", size: 15).weight(.bold))
+                    .foregroundStyle(ChoreQuestColors.error)
+
+                Text(subtitle)
+                    .font(.custom("Quicksand", size: 11).weight(.medium))
+                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 private struct PrivacyAndDataView: View {
     var body: some View {
         Form {
-            Section("Family Data") {
-                Label("Family profiles, quests, rewards, and progress sync through the family account.", systemImage: "person.3.fill")
-                Label("Only signed-in family devices should access household data.", systemImage: "lock.shield.fill")
-            }
+            Section {
+                NavigationLink {
+                    PrivacyPolicyView()
+                } label: {
+                    Label("Privacy Policy", systemImage: "hand.raised.fill")
+                }
 
-            Section("Proof Photos") {
-                Label("Proof photos are attached to quest submission history for parent review.", systemImage: "photo.fill")
-                Label("Camera and photo permissions can be changed in iOS Settings.", systemImage: "gearshape.fill")
+                NavigationLink {
+                    TermsOfServiceView()
+                } label: {
+                    Label("Terms of Service", systemImage: "doc.text.fill")
+                }
             }
         }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(ChoreQuestColors.background.ignoresSafeArea())
         .navigationTitle("Privacy & Data")
         .navigationBarTitleDisplayMode(.large)
     }
@@ -408,28 +499,140 @@ private struct AboutChoreQuestView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "shield.lefthalf.filled.badge.checkmark")
-                .font(.system(size: 64, weight: .bold))
-                .foregroundStyle(ChoreQuestColors.primary)
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                appHeader
+                missionCard
 
-            Text("ChoreQuest")
-                .font(.custom("Quicksand", size: 30).weight(.bold))
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("How the adventure works")
+                        .font(.custom("Quicksand", size: 20).weight(.bold))
+                        .foregroundStyle(ChoreQuestColors.onSurface)
 
-            Text("Family teamwork turned into everyday adventures.")
-                .font(.custom("Quicksand", size: 15).weight(.medium))
-                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                .multilineTextAlignment(.center)
+                    aboutFeature(
+                        title: "Parents create quests",
+                        message: "Turn everyday responsibilities into clear, age-friendly missions.",
+                        icon: "map.fill",
+                        color: ChoreQuestColors.primary
+                    )
 
-            Text(versionText)
-                .font(.custom("Quicksand", size: 13).weight(.bold))
-                .foregroundStyle(ChoreQuestColors.outline)
+                    aboutFeature(
+                        title: "Kids share progress",
+                        message: "Complete quests, submit proof, and choose how much XP to contribute.",
+                        icon: "sparkles",
+                        color: ChoreQuestColors.sky
+                    )
+
+                    aboutFeature(
+                        title: "Families celebrate together",
+                        message: "Approve wins, claim rewards, and work toward a shared family goal.",
+                        icon: "party.popper.fill",
+                        color: ChoreQuestColors.coral
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Made for growing teams, helpful habits, and plenty of high-fives.")
+                    .font(.custom("Quicksand", size: 14).weight(.semibold))
+                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                Text(versionText)
+                    .font(.custom("Quicksand", size: 13).weight(.bold))
+                    .foregroundStyle(ChoreQuestColors.outline)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(ChoreQuestColors.surfaceContainer)
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 32)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(30)
-        .background(ChoreQuestColors.background.ignoresSafeArea())
+        .background {
+            ZStack {
+                ChoreQuestColors.background
+                QuestBackground()
+            }
+            .ignoresSafeArea()
+        }
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var appHeader: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(ChoreQuestColors.secondary.opacity(0.25))
+                    .frame(width: 172, height: 172)
+                    .blur(radius: 16)
+
+                Image("ChoreQuestLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 148, height: 148)
+                    .shadow(color: ChoreQuestColors.primary.opacity(0.2), radius: 20, y: 10)
+            }
+
+            Text("ChoreQuest")
+                .font(.custom("Quicksand", size: 32).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.onSurface)
+
+            Text("Little tasks. Big adventures.")
+                .font(.custom("Quicksand", size: 16).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.primary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var missionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Our mission", systemImage: "heart.fill")
+                .font(.custom("Quicksand", size: 17).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.primary)
+
+            Text("ChoreQuest helps families turn everyday responsibilities into positive teamwork. Parents guide the adventure, kids build confidence through progress, and everyone gets a reason to celebrate together.")
+                .font(.custom("Quicksand", size: 15).weight(.medium))
+                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                .lineSpacing(3)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(ChoreQuestColors.primaryFixed.opacity(0.75))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func aboutFeature(title: String, message: String, icon: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(color)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.custom("Quicksand", size: 16).weight(.bold))
+                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                Text(message)
+                    .font(.custom("Quicksand", size: 13).weight(.medium))
+                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(ChoreQuestColors.surfaceContainerLowest)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(ChoreQuestColors.primaryFixed.opacity(0.7), lineWidth: 1)
+        }
     }
 }
 
