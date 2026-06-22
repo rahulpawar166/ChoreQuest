@@ -396,7 +396,7 @@ private struct PrivacyAndDataView: View {
             }
         }
         .navigationTitle("Privacy & Data")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -429,7 +429,7 @@ private struct AboutChoreQuestView: View {
         .padding(30)
         .background(ChoreQuestColors.background.ignoresSafeArea())
         .navigationTitle("About")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -498,7 +498,7 @@ private struct DeleteAccountView: View {
                 }
             }
             .navigationTitle("Delete Account")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .interactiveDismissDisabled(authStore.isLoading)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

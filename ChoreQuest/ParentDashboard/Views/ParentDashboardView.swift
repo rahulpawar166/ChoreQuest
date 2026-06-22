@@ -123,7 +123,7 @@ struct ParentDashboardView: View {
             }
         }
         .navigationTitle(selectedTab.navigationTitle)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if let snapshot {
                 ToolbarItem(placement: .topBarLeading) {
@@ -859,7 +859,7 @@ private struct ParentQuestDetailView: View {
             }
         }
         .navigationTitle("Quest Details")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Close") {

@@ -29,7 +29,7 @@ struct RoleSelectionView: View {
             .ignoresSafeArea()
         )
         .navigationTitle("Chore Quest")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Sign Out") {

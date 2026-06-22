@@ -74,7 +74,7 @@ struct CreateQuestView: View {
                 }
             }
             .navigationTitle("Create a Quest")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {

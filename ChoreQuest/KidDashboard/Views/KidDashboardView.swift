@@ -101,7 +101,7 @@ struct KidDashboardView: View {
             }
         }
         .navigationTitle(selectedTab.navigationTitle)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if let snapshot {
                 ToolbarItem(placement: .topBarLeading) {

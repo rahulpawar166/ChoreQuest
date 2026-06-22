@@ -137,7 +137,7 @@ struct FamilyProfileEditorView: View {
                 }
             }
             .navigationTitle("Edit Family")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") { dismiss() }
@@ -247,7 +247,7 @@ struct HeroProfileEditorView: View {
                 }
             }
             .navigationTitle("Edit Hero")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") { dismiss() }
@@ -377,7 +377,7 @@ struct FamilyRewardEditorView: View {
                 }
             }
             .navigationTitle(currentReward == nil ? "Create Family Reward" : "Edit Family Reward")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") { dismiss() }
@@ -457,7 +457,7 @@ struct AddHeroProfileView: View {
                 }
             }
             .navigationTitle("Add Kid")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") { dismiss() }

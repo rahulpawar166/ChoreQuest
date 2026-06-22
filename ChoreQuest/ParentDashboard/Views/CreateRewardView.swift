@@ -35,7 +35,7 @@ struct CreateRewardView: View {
                 }
             }
             .navigationTitle("Create Reward")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") { dismiss() }

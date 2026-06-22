@@ -778,7 +778,7 @@ struct ParentRejectionCommentView: View {
                 .padding(.top, 24)
             }
             .navigationTitle("Reject with Comment")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {

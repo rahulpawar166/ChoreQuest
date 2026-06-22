@@ -48,7 +48,7 @@ struct KidQuestSubmissionView: View {
             }
         }
         .navigationTitle("Quest Proof")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Close") {

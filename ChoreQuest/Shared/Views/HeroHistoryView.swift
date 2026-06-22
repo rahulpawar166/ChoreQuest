@@ -31,7 +31,7 @@ struct HeroHistoryView: View {
             }
         }
         .navigationTitle("\(snapshot.hero.name) History")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .sheet(
             isPresented: Binding(
                 get: { previewImageBase64 != nil },

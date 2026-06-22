@@ -31,7 +31,7 @@ struct FamilyIdentityView: View {
             .padding(.bottom, 32)
         }
         .navigationTitle("Chore Quest")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Sign Out", action: onSignOut)

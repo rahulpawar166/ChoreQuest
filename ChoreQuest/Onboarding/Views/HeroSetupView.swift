@@ -42,7 +42,7 @@ struct HeroSetupView: View {
             .padding(.bottom, 36)
         }
         .navigationTitle("New Hero")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
