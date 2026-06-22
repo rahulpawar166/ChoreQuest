@@ -42,7 +42,7 @@ struct FamilyIdentityView: View {
 
     private var progressHeader: some View {
         VStack(spacing: 14) {
-            Image("appIcon")
+            Image("ChoreQuestLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 88, height: 88)

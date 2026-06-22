@@ -60,7 +60,7 @@ struct HeroSetupView: View {
 
     private var header: some View {
         VStack(spacing: 12) {
-            Image("appIcon")
+            Image("ChoreQuestLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 88, height: 88)

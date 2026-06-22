@@ -8,8 +8,20 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var isShowingLaunchAnimation = true
+
     var body: some View {
-        AppRootView()
+        ZStack {
+            AppRootView()
+
+            if isShowingLaunchAnimation {
+                PlayfulLaunchView {
+                    isShowingLaunchAnimation = false
+                }
+                .zIndex(1)
+                .transition(.opacity)
+            }
+        }
     }
 }
 

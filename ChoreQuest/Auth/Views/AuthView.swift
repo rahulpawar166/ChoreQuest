@@ -67,7 +67,7 @@ struct AuthView: View {
                     .frame(width: 142, height: 142)
                     .blur(radius: 12)
 
-                Image("appIcon")
+                Image("ChoreQuestLogo")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 122, height: 122)
