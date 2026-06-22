@@ -24,7 +24,8 @@ final class FirestoreSessionService {
                 "questSubmissions",
                 "rewards",
                 "rewardClaims",
-                "familyContributions"
+                "familyContributions",
+                "feedback"
             ]
 
             for subcollection in subcollections {

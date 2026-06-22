@@ -279,6 +279,22 @@ struct ChoreQuestSettingsView: View {
     private var supportSection: some View {
         Section("Support") {
             NavigationLink {
+                FeedbackView(
+                    role: role,
+                    selectedHero: selectedHero,
+                    userProfile: authStore.userProfile,
+                    familyProfile: authStore.familyProfile
+                )
+            } label: {
+                settingsRow(
+                    title: "Send Feedback",
+                    subtitle: role == .parent ? "Share feedback from a parent's perspective." : "Tell us what would make quests more fun.",
+                    icon: "bubble.left.and.bubble.right.fill",
+                    color: ChoreQuestColors.pink
+                )
+            }
+
+            NavigationLink {
                 PrivacyAndDataView()
             } label: {
                 settingsRow(
