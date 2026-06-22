@@ -56,7 +56,7 @@ struct FamilyProgressSnapshot {
             FamilyLeaderboardEntry(
                 id: hero.id,
                 name: hero.name,
-                levelTitle: hero.levelTitle,
+                heroTitle: hero.heroTitle,
                 imageBase64: hero.imageBase64,
                 avatarIconName: hero.avatarIconName,
                 avatarColorHex: hero.avatarColorHex,
@@ -122,7 +122,7 @@ struct FamilyRewardProgress {
 struct FamilyLeaderboardEntry: Identifiable, Hashable {
     let id: String
     let name: String
-    let levelTitle: String
+    let heroTitle: String
     let imageBase64: String?
     let avatarIconName: String
     let avatarColorHex: UInt

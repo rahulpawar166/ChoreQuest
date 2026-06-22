@@ -279,7 +279,7 @@ struct KidDashboardView: View {
                                 .font(.custom("Quicksand", size: 28).weight(.bold))
                                 .foregroundStyle(.white)
 
-                            Text(snapshot.hero.levelTitle)
+                            Text(snapshot.hero.heroTitle)
                                 .font(.custom("Quicksand", size: 13).weight(.bold))
                                 .foregroundStyle(.white.opacity(0.86))
                         }

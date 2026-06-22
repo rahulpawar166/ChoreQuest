@@ -12,19 +12,19 @@ struct HeroProfileDraft: Identifiable, Hashable {
     var name: String
     var avatar: AvatarOption
     var imageData: Data?
-    var levelTitle: String
+    var heroTitle: String
 
     init(
         id: UUID = UUID(),
         name: String = "",
         avatar: AvatarOption = AvatarOption.all.first ?? AvatarOption(id: "swift-hare", name: "Swift Hare", iconName: "hare.fill", colorHex: 0xf97316),
         imageData: Data? = nil,
-        levelTitle: String = "Level 1 Scout"
+        heroTitle: String = "Scout"
     ) {
         self.id = id
         self.name = name
         self.avatar = avatar
         self.imageData = imageData
-        self.levelTitle = levelTitle
+        self.heroTitle = heroTitle
     }
 }

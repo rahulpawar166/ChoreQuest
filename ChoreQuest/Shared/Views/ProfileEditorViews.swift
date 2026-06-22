@@ -112,7 +112,7 @@ struct FamilyProfileEditorView: View {
                                                     Text(hero.name)
                                                         .font(.custom("Quicksand", size: 16).weight(.bold))
                                                         .foregroundStyle(ChoreQuestColors.onSurface)
-                                                    Text(hero.levelTitle)
+                                                    Text(hero.heroTitle)
                                                         .font(.custom("Quicksand", size: 12).weight(.medium))
                                                         .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                                                 }
@@ -212,7 +212,7 @@ struct HeroProfileEditorView: View {
                                     HeroAvatarPreview(imageData: imageData, avatar: selectedAvatar, size: 72)
 
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(hero.levelTitle)
+                                        Text(hero.heroTitle)
                                             .font(.custom("Quicksand", size: 12).weight(.bold))
                                             .foregroundStyle(ChoreQuestColors.primary)
 

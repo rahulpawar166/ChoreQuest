@@ -234,7 +234,7 @@ struct HeroSetupView: View {
                 name: trimmedHeroName,
                 avatar: selectedAvatar,
                 imageData: heroImageData,
-                levelTitle: "Level \(heroes.count + 1) Scout"
+                heroTitle: "Scout"
             )
         )
         heroName = ""
@@ -255,7 +255,7 @@ private struct HeroRosterCard: View {
                     .font(.custom("Quicksand", size: 18).weight(.bold))
                     .foregroundStyle(ChoreQuestColors.onSurface)
 
-                Text(hero.levelTitle)
+                Text(hero.heroTitle)
                     .font(.custom("Quicksand", size: 12).weight(.bold))
                     .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
             }

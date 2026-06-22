@@ -338,7 +338,7 @@ struct ParentApprovalCard: View {
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            Text(approval.heroLevelTitle)
+                            Text(approval.heroTitle)
                                 .font(.custom("Quicksand", size: 12).weight(.bold))
                                 .foregroundStyle(ChoreQuestColors.primary)
                                 .lineLimit(1)
@@ -503,7 +503,7 @@ struct ParentHeroCard: View {
                                     .font(.custom("Quicksand", size: 20).weight(.bold))
                                     .foregroundStyle(ChoreQuestColors.onSurface)
 
-                                Text("LVL \(hero.levelValue)")
+                                Text(hero.heroTitle)
                                     .font(.custom("Quicksand", size: 11).weight(.bold))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
@@ -517,13 +517,6 @@ struct ParentHeroCard: View {
 
                     Spacer()
 
-                    Text(hero.levelTitle)
-                        .font(.custom("Quicksand", size: 12).weight(.bold))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(ChoreQuestColors.surfaceContainerLow)
-                        .foregroundStyle(Color(hex: hero.avatarColorHex))
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
 
                 HStack(spacing: 12) {

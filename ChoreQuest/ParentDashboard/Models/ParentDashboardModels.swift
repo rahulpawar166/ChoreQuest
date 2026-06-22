@@ -34,12 +34,11 @@ struct ParentDashboardSnapshot {
         crestName = familyProfile.crestName
         parentImageBase64 = familyProfile.parentImageBase64
 
-        heroes = familyProfile.heroes.enumerated().map { index, hero in
+        heroes = familyProfile.heroes.map { hero in
             ParentHeroSummary(
                 id: hero.id,
                 name: hero.name,
-                levelTitle: hero.levelTitle,
-                levelValue: ParentDashboardSnapshot.levelValue(from: hero.levelTitle, fallback: index + 1),
+                heroTitle: hero.heroTitle,
                 avatarIconName: hero.avatarIconName,
                 avatarColorHex: hero.avatarColorHex,
                 imageBase64: hero.imageBase64
@@ -85,14 +84,6 @@ struct ParentDashboardSnapshot {
         return trimmed.isEmpty ? "Your Family Squad" : trimmed
     }
 
-    private static func levelValue(from title: String, fallback: Int) -> Int {
-        let digits = title.compactMap(\.wholeNumberValue)
-        guard !digits.isEmpty else {
-            return fallback
-        }
-
-        return digits.reduce(0) { ($0 * 10) + $1 }
-    }
 }
 
 struct ParentDashboardStat: Identifiable {
@@ -129,7 +120,7 @@ struct ParentApproval: Identifiable {
     let id: String
     let questID: String
     let hero: ParentAssignee
-    let heroLevelTitle: String
+    let heroTitle: String
     let choreTitle: String
     let proofLabel: String
     let xp: Int
@@ -149,8 +140,7 @@ struct ParentAssignee {
 struct ParentHeroSummary: Identifiable {
     let id: String
     let name: String
-    let levelTitle: String
-    let levelValue: Int
+    let heroTitle: String
     let avatarIconName: String
     let avatarColorHex: UInt
     let imageBase64: String?

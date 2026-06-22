@@ -312,10 +312,9 @@ struct KidQuestSubmissionView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
-                        .background(Color.black.opacity(0.84))
+                        .background(Color.black.opacity(0.5))
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 12)
+                        .padding([.horizontal, .bottom], 12)
                     }
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
@@ -326,7 +325,7 @@ struct KidQuestSubmissionView: View {
                     )
                     .frame(width: geometry.size.width, height: geometry.size.height)
 
-                    VStack(spacing: 15) {
+                    VStack(spacing: 16) {
                         ZStack {
                             Circle()
                                 .fill(ChoreQuestColors.primary.opacity(0.12))

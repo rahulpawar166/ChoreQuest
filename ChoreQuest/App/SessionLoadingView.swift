@@ -78,12 +78,6 @@ private struct HeroLoadingAnimation: View {
                 .font(.system(size: isCompact ? 25 : 40, weight: .bold))
                 .foregroundStyle(ChoreQuestColors.primary)
                 .scaleEffect(isAnimating && !reduceMotion ? 1.08 : 0.94)
-
-            Image(systemName: "star.fill")
-                .font(.system(size: isCompact ? 14 : 20, weight: .bold))
-                .foregroundStyle(ChoreQuestColors.secondary)
-                .offset(y: isCompact ? -40 : -62)
-                .rotationEffect(.degrees(isAnimating && !reduceMotion ? 360 : 0))
         }
         .frame(width: isCompact ? 86 : 132, height: isCompact ? 86 : 132)
         .overlay {

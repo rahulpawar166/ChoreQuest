@@ -64,7 +64,7 @@ struct HeroHistoryView: View {
                         .font(.custom("Quicksand", size: 26).weight(.bold))
                         .foregroundStyle(ChoreQuestColors.onSurface)
 
-                    Text(snapshot.hero.levelTitle)
+                    Text(snapshot.hero.heroTitle)
                         .font(.custom("Quicksand", size: 13).weight(.bold))
                         .foregroundStyle(ChoreQuestColors.primary)
 

@@ -215,7 +215,6 @@ final class FirestoreSessionService {
         guard var data = snapshot.data() else { return nil }
 
         var heroes = data["heroes"] as? [[String: Any]] ?? []
-        let nextLevel = "Level \(heroes.count + 1) Scout"
         let newHero = HeroProfile(
             id: UUID().uuidString,
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -224,7 +223,7 @@ final class FirestoreSessionService {
             avatarIconName: avatar.iconName,
             avatarColorHex: avatar.colorHex,
             imageBase64: imageData?.base64EncodedString(),
-            levelTitle: nextLevel
+            heroTitle: "Scout"
         )
 
         heroes.append(heroDictionary(newHero))
@@ -292,7 +291,7 @@ final class FirestoreSessionService {
             avatarIconName: draft.avatar.iconName,
             avatarColorHex: draft.avatar.colorHex,
             imageBase64: draft.imageData?.base64EncodedString(),
-            levelTitle: draft.levelTitle
+            heroTitle: draft.heroTitle
         )
     }
 
@@ -305,7 +304,7 @@ final class FirestoreSessionService {
             "avatarIconName": hero.avatarIconName,
             "avatarColorHex": Int(hero.avatarColorHex),
             "imageBase64": hero.imageBase64 as Any,
-            "levelTitle": hero.levelTitle
+            "heroTitle": hero.heroTitle
         ]
     }
 
@@ -320,8 +319,24 @@ final class FirestoreSessionService {
             avatarIconName: data["avatarIconName"] as? String ?? AvatarOption.all[0].iconName,
             avatarColorHex: UInt(colorValue),
             imageBase64: data["imageBase64"] as? String,
-            levelTitle: data["levelTitle"] as? String ?? "Level 1 Scout"
+            heroTitle: heroTitle(from: data)
         )
+    }
+
+    private func heroTitle(from data: [String: Any]) -> String {
+        if let title = data["heroTitle"] as? String, !title.isEmpty {
+            return title
+        }
+
+        let legacyTitle = data["levelTitle"] as? String ?? "Scout"
+        let components = legacyTitle.split(separator: " ")
+        if components.count >= 3,
+           components[0].localizedCaseInsensitiveCompare("Level") == .orderedSame,
+           Int(components[1]) != nil {
+            return components.dropFirst(2).joined(separator: " ")
+        }
+
+        return legacyTitle
     }
 }
 

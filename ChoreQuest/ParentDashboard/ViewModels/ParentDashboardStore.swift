@@ -220,7 +220,7 @@ final class ParentDashboardStore: ObservableObject {
                     avatarIconName: hero.avatarIconName,
                     avatarColorHex: hero.avatarColorHex
                 ),
-                heroLevelTitle: hero.levelTitle,
+                heroTitle: hero.heroTitle,
                 choreTitle: quest.title,
                 proofLabel: "Awaiting Review",
                 xp: quest.xpValue,

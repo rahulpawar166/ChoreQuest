@@ -28,5 +28,5 @@ struct HeroProfile: Identifiable, Hashable {
     let avatarIconName: String
     let avatarColorHex: UInt
     let imageBase64: String?
-    let levelTitle: String
+    let heroTitle: String
 }

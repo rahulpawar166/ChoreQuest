@@ -87,7 +87,7 @@ struct RoleSelectionView: View {
 
             RoleCard(
                 title: "I'm a Hero",
-                message: "Complete chores to earn XP, level up, and unlock awesome loot.",
+                message: "Complete chores to earn XP and unlock awesome loot.",
                 icon: "sparkles",
                 accent: Color(hex: 0x6f5100),
                 background: Color(hex: 0xffdf9f),
