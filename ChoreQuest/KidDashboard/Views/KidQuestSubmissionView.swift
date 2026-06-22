@@ -21,6 +21,7 @@ struct KidQuestSubmissionView: View {
     @State private var sourceType: UIImagePickerController.SourceType?
     @State private var isShowingSourceDialog = false
     @State private var isShowingSuccess = false
+    @State private var expandedProof: ExpandedProof?
     @State private var permissionAlert: QuestMediaPermissionAlert?
     private let previewHeight: CGFloat = 280
 
@@ -65,31 +66,14 @@ struct KidQuestSubmissionView: View {
                 )
             }
         }
-        .confirmationDialog("Add Proof", isPresented: $isShowingSourceDialog) {
-            Button("Choose from Gallery") {
-                Task {
-                    await requestPickerAccess(for: .photoLibrary)
-                }
-            }
-
-            if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                Button("Take Photo") {
-                    Task {
-                        await requestPickerAccess(for: .camera)
-                    }
-                }
-            }
-
-            if proofImageData != nil {
-                Button("Remove Photo", role: .destructive) {
-                    proofImageData = nil
-                }
-            }
-        }
-        .sheet(item: $sourceType) { source in
+        .fullScreenCover(item: $sourceType) { source in
             CameraLibraryImagePicker(sourceType: source) { data in
                 proofImageData = data
             }
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(item: $expandedProof) { proof in
+            ExpandedProofImageView(proof: proof)
         }
         .alert(item: $permissionAlert) { alert in
             if alert.opensSettings {
@@ -161,35 +145,80 @@ struct KidQuestSubmissionView: View {
 
     private var captureSection: some View {
         ParentSurfaceCard {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Capture Proof")
-                    .font(.custom("Quicksand", size: 28).weight(.bold))
-                    .foregroundStyle(ChoreQuestColors.onSurface)
+            VStack(spacing: 20) {
+                VStack(spacing: 7) {
+                    Label("Capture Proof", systemImage: "camera.fill")
+                        .font(.custom("Quicksand", size: 26).weight(.bold))
+                        .foregroundStyle(ChoreQuestColors.onSurface)
 
-                Text("Show your commander that the quest is done with a clear photo.")
-                    .font(.custom("Quicksand", size: 15).weight(.medium))
-                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-
-                Button {
-                    isShowingSourceDialog = true
-                } label: {
-                    proofPreview
+                    Text("Show your commander that the quest is complete.")
+                        .font(.custom("Quicksand", size: 14).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        .multilineTextAlignment(.center)
                 }
-                .buttonStyle(.plain)
 
-                HStack(spacing: 10) {
-                    proofActionPill(title: "Gallery", icon: "photo.on.rectangle") {
-                        Task {
-                            await requestPickerAccess(for: .photoLibrary)
-                        }
+                ZStack(alignment: .topTrailing) {
+                    Button {
+                        isShowingSourceDialog = true
+                    } label: {
+                        proofPreview
                     }
+                    .buttonStyle(.plain)
+                    .confirmationDialog(
+                        proofImageData == nil ? "Add Proof" : "Replace Proof",
+                        isPresented: $isShowingSourceDialog,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Choose from Photo Library", systemImage: "photo.on.rectangle") {
+                            Task { await requestPickerAccess(for: .photoLibrary) }
+                        }
 
-                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                        proofActionPill(title: "Camera", icon: "camera.fill") {
-                            Task {
-                                await requestPickerAccess(for: .camera)
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            Button("Take a Photo", systemImage: "camera.fill") {
+                                Task { await requestPickerAccess(for: .camera) }
                             }
                         }
+
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Choose how you want to add your quest photo.")
+                    }
+
+                    if let proofImageData {
+                        HStack {
+                            Button {
+                                expandedProof = ExpandedProof(imageData: proofImageData)
+                            } label: {
+                                Image(systemName: "rectangle.expand.diagonal")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.black.opacity(0.76))
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Expand proof photo")
+
+                            Spacer()
+
+                            Button {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    self.proofImageData = nil
+                                }
+                            } label: {
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 40, height: 40)
+                                    .background(ChoreQuestColors.error)
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove proof photo")
+                        }
+                        .padding(14)
                     }
                 }
             }
@@ -243,60 +272,113 @@ struct KidQuestSubmissionView: View {
     }
 
     private var proofPreview: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.white.opacity(0.92))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(ChoreQuestColors.outlineVariant, style: StrokeStyle(lineWidth: 2.5, dash: [10, 10]))
-                }
+        GeometryReader { geometry in
+            ZStack {
+                if let proofImageData, let image = UIImage(data: proofImageData) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
 
-            if let proofImageData, let image = UIImage(data: proofImageData) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.white.opacity(0.92))
-                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.5)],
+                        startPoint: .center,
+                        endPoint: .bottom
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height)
 
-                Button {
-                    self.proofImageData = nil
-                } label: {
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 16, weight: .bold))
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+
+                        HStack(spacing: 9) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(ChoreQuestColors.tertiaryFixed)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Proof ready!")
+                                    .font(.custom("Quicksand", size: 17).weight(.bold))
+
+                                Text("Tap the photo to replace it")
+                                    .font(.custom("Quicksand", size: 12).weight(.semibold))
+                                    .opacity(0.82)
+                                    .lineLimit(2)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
                         .foregroundStyle(.white)
-                        .frame(width: 38, height: 38)
-                        .background(ChoreQuestColors.error)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .padding(16)
-            } else {
-                VStack(spacing: 18) {
-                    Circle()
-                        .fill(ChoreQuestColors.primary)
-                        .frame(width: 82, height: 82)
-                        .overlay {
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.black.opacity(0.84))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 12)
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                } else {
+                    LinearGradient(
+                        colors: [ChoreQuestColors.primaryFixed.opacity(0.72), ChoreQuestColors.skyContainer.opacity(0.72)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+
+                    VStack(spacing: 15) {
+                        ZStack {
+                            Circle()
+                                .fill(ChoreQuestColors.primary.opacity(0.12))
+                                .frame(width: 104, height: 104)
+
+                            Circle()
+                                .fill(ChoreQuestColors.primary)
+                                .frame(width: 76, height: 76)
+
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 28, weight: .bold))
                                 .foregroundStyle(.white)
                         }
 
-                    Text("Tap to add your victory photo")
-                        .font(.custom("Quicksand", size: 18).weight(.bold))
-                        .foregroundStyle(ChoreQuestColors.onSurface)
+                        VStack(spacing: 6) {
+                            Text("Add a victory photo")
+                                .font(.custom("Quicksand", size: 21).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
 
-                    Text("Use the gallery or camera.")
-                        .font(.custom("Quicksand", size: 14).weight(.medium))
-                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                            Text("Tap here to use the camera or photo library")
+                                .font(.custom("Quicksand", size: 13).weight(.semibold))
+                                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                                .multilineTextAlignment(.center)
+                        }
+
+                        Label("Choose Photo", systemImage: "plus.circle.fill")
+                            .font(.custom("Quicksand", size: 13).weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(ChoreQuestColors.primary)
+                            .clipShape(Capsule())
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .padding(.horizontal, 20)
                 }
-                .padding(24)
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
         }
-        .frame(maxWidth: .infinity)
         .frame(height: previewHeight)
+        .background(ChoreQuestColors.surfaceContainerLowest)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(
+                    proofImageData == nil ? ChoreQuestColors.primary.opacity(0.36) : Color.white.opacity(0.38),
+                    style: StrokeStyle(lineWidth: 2, dash: proofImageData == nil ? [9, 7] : [])
+                )
+        }
         .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .accessibilityLabel(proofImageData == nil ? "Add proof photo" : "Replace proof photo")
     }
 
     private var successOverlay: some View {
@@ -325,22 +407,6 @@ struct KidQuestSubmissionView: View {
             }
     }
 
-    private func proofActionPill(title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(title)
-            }
-            .font(.custom("Quicksand", size: 13).weight(.bold))
-            .foregroundStyle(ChoreQuestColors.primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(ChoreQuestColors.surfaceContainerLow)
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
     @MainActor
     private func requestPickerAccess(for sourceType: UIImagePickerController.SourceType) async {
         switch await QuestMediaPermissionService.requestAccess(for: sourceType) {
@@ -349,5 +415,46 @@ struct KidQuestSubmissionView: View {
         case .showAlert(let alert):
             permissionAlert = alert
         }
+    }
+}
+
+private struct ExpandedProof: Identifiable {
+    let id = UUID()
+    let imageData: Data
+}
+
+private struct ExpandedProofImageView: View {
+    let proof: ExpandedProof
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            if let image = UIImage(data: proof.imageData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.vertical, 60)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.18))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(18)
+            .accessibilityLabel("Close expanded proof photo")
+        }
+        .statusBarHidden()
     }
 }
