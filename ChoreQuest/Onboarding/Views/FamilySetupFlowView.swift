@@ -12,6 +12,7 @@ struct FamilySetupFlowView: View {
 
     @State private var draft = FamilyProfileDraft()
     @State private var step: OnboardingStep = .familyIdentity
+    @State private var isPresentingAppTour = false
 
     var body: some View {
         ZStack {
@@ -47,6 +48,20 @@ struct FamilySetupFlowView: View {
         }
         .animation(.spring(response: 0.36, dampingFraction: 0.84), value: step)
         .questToast(message: $authStore.errorMessage)
+        .fullScreenCover(isPresented: $isPresentingAppTour) {
+            ParentAppTourView(onFinish: authStore.completeAppTour)
+        }
+        .onAppear {
+            presentAppTourIfNeeded()
+        }
+        .onChange(of: authStore.userProfile?.hasCompletedAppTour) { _, _ in
+            presentAppTourIfNeeded()
+        }
+    }
+
+    private func presentAppTourIfNeeded() {
+        guard authStore.userProfile?.hasCompletedAppTour == false else { return }
+        isPresentingAppTour = true
     }
 }
 

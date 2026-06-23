@@ -258,20 +258,20 @@ struct ChoreQuestSettingsView: View {
                         color: ChoreQuestColors.primary
                     )
                 }
-            } else {
-                Button(role: .destructive) {
-                    isConfirmingSignOut = true
-                } label: {
-                    settingsRow(
-                        title: "Sign Out",
-                        subtitle: "Ask a parent before signing out.",
-                        icon: "rectangle.portrait.and.arrow.right",
-                        color: ChoreQuestColors.error,
-                        titleColor: ChoreQuestColors.error
-                    )
-                }
-                .buttonStyle(.plain)
             }
+
+            Button(role: .destructive) {
+                isConfirmingSignOut = true
+            } label: {
+                settingsRow(
+                    title: "Sign Out",
+                    subtitle: role == .parent ? "Remove the family account from this device." : "Ask a parent before signing out.",
+                    icon: "rectangle.portrait.and.arrow.right",
+                    color: ChoreQuestColors.error,
+                    titleColor: ChoreQuestColors.error
+                )
+            }
+            .buttonStyle(.plain)
         }
         .listRowBackground(ChoreQuestColors.surfaceContainerLowest)
     }
@@ -395,7 +395,6 @@ private enum SettingsSheet: Identifiable {
 private struct ParentAccountSettingsView: View {
     @ObservedObject var authStore: AuthStore
 
-    @State private var isConfirmingSignOut = false
     @State private var isPresentingDeleteAccount = false
 
     var body: some View {
@@ -407,16 +406,6 @@ private struct ParentAccountSettingsView: View {
                         .multilineTextAlignment(.trailing)
                 }
 
-                Button(role: .destructive) {
-                    isConfirmingSignOut = true
-                } label: {
-                    accountRow(
-                        title: "Sign Out",
-                        subtitle: "Remove the family account from this device.",
-                        icon: "rectangle.portrait.and.arrow.right"
-                    )
-                }
-                .buttonStyle(.plain)
             }
 
             Section {
@@ -433,7 +422,7 @@ private struct ParentAccountSettingsView: View {
             } header: {
                 Text("Account Data")
             } footer: {
-                Text("Account deletion requires the parent password and an additional confirmation.")
+                Text("Account deletion requires confirmation and may require signing in again.")
             }
         }
         .formStyle(.grouped)
@@ -449,12 +438,6 @@ private struct ParentAccountSettingsView: View {
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $isPresentingDeleteAccount) {
             DeleteAccountView(authStore: authStore)
-        }
-        .alert("Sign Out?", isPresented: $isConfirmingSignOut) {
-            Button("Cancel", role: .cancel) {}
-            Button("Sign Out", role: .destructive, action: authStore.signOut)
-        } message: {
-            Text("This device will need the family account credentials to sign in again.")
         }
     }
 

@@ -16,6 +16,20 @@ struct SessionSnapshot {
 final class FirestoreSessionService {
     private let db = Firestore.firestore()
 
+    func initializeNewUser(userID: String, email: String?) async throws {
+        let data: [String: Any] = [
+            "userID": userID,
+            "email": email ?? "",
+            "onboardingCompleted": false,
+            "hasCompletedAppTour": false,
+            "selectedRole": NSNull(),
+            "selectedHeroID": NSNull(),
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await db.collection("users").document(userID).setDataAsync(data, merge: true)
+    }
+
     func deleteAccountData(userID: String, familyID: String?) async throws {
         if let familyID {
             let familyReference = db.collection("families").document(familyID)
@@ -83,6 +97,7 @@ final class FirestoreSessionService {
             "email": email ?? "",
             "familyID": familyID,
             "onboardingCompleted": true,
+            "hasCompletedAppTour": true,
             "selectedRole": NSNull(),
             "selectedHeroID": NSNull(),
             "updatedAt": FieldValue.serverTimestamp()
@@ -96,6 +111,7 @@ final class FirestoreSessionService {
             email: email ?? "",
             familyID: familyID,
             onboardingCompleted: true,
+            hasCompletedAppTour: true,
             selectedRole: nil,
             selectedHeroID: nil
         )
@@ -115,6 +131,15 @@ final class FirestoreSessionService {
     func updateSelectedRole(userID: String, role: AppRole) async throws {
         let data: [String: Any] = [
             "selectedRole": role.rawValue,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await db.collection("users").document(userID).setDataAsync(data, merge: true)
+    }
+
+    func updateAppTourCompleted(userID: String) async throws {
+        let data: [String: Any] = [
+            "hasCompletedAppTour": true,
+            "appTourCompletedAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp()
         ]
         try await db.collection("users").document(userID).setDataAsync(data, merge: true)
@@ -279,6 +304,7 @@ final class FirestoreSessionService {
             email: (data["email"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? email ?? "",
             familyID: data["familyID"] as? String,
             onboardingCompleted: data["onboardingCompleted"] as? Bool ?? false,
+            hasCompletedAppTour: data["hasCompletedAppTour"] as? Bool ?? true,
             selectedRole: selectedRole,
             selectedHeroID: data["selectedHeroID"] as? String
         )

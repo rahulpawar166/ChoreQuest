@@ -10,6 +10,7 @@ struct UserProfile {
     let email: String
     let familyID: String?
     let onboardingCompleted: Bool
+    let hasCompletedAppTour: Bool
     let selectedRole: AppRole?
     let selectedHeroID: String?
 }

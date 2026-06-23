@@ -64,7 +64,8 @@ final class AuthStore: ObservableObject {
 
     func signUp(email: String, password: String) async {
         await authenticate {
-            try await Auth.auth().createUserAsync(withEmail: email, password: password)
+            let result = try await Auth.auth().createUserAsync(withEmail: email, password: password)
+            try await self.initializeNewAccountIfNeeded(result)
         }
     }
 
@@ -100,7 +101,8 @@ final class AuthStore: ObservableObject {
                 fullName: appleCredential.fullName
             )
             await authenticate(message: "Signing in with Apple...") {
-                try await Auth.auth().signInAsync(with: credential)
+                let result = try await Auth.auth().signInAsync(with: credential)
+                try await self.initializeNewAccountIfNeeded(result)
             }
 
         case .failure(let error):
@@ -135,7 +137,8 @@ final class AuthStore: ObservableObject {
                 accessToken: result.user.accessToken.tokenString
             )
             await authenticate(message: "Signing in with Google...") {
-                try await Auth.auth().signInAsync(with: credential)
+                let result = try await Auth.auth().signInAsync(with: credential)
+                try await self.initializeNewAccountIfNeeded(result)
             }
         } catch {
             if error.localizedDescription.localizedCaseInsensitiveContains("cancel") { return }
@@ -243,6 +246,7 @@ final class AuthStore: ObservableObject {
                     email: profile.email,
                     familyID: profile.familyID,
                     onboardingCompleted: profile.onboardingCompleted,
+                    hasCompletedAppTour: profile.hasCompletedAppTour,
                     selectedRole: role,
                     selectedHeroID: profile.selectedHeroID
                 )
@@ -272,6 +276,7 @@ final class AuthStore: ObservableObject {
                     email: profile.email,
                     familyID: profile.familyID,
                     onboardingCompleted: profile.onboardingCompleted,
+                    hasCompletedAppTour: profile.hasCompletedAppTour,
                     selectedRole: nil,
                     selectedHeroID: nil
                 )
@@ -282,6 +287,31 @@ final class AuthStore: ObservableObject {
         }
 
         setLoading(false)
+    }
+
+    func completeAppTour() async -> Bool {
+        guard let currentUserID, let profile = userProfile else { return false }
+
+        setLoading(true, message: "Finishing your tour...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            try await sessionService.updateAppTourCompleted(userID: currentUserID)
+            userProfile = UserProfile(
+                userID: profile.userID,
+                email: profile.email,
+                familyID: profile.familyID,
+                onboardingCompleted: profile.onboardingCompleted,
+                hasCompletedAppTour: true,
+                selectedRole: profile.selectedRole,
+                selectedHeroID: profile.selectedHeroID
+            )
+            return true
+        } catch {
+            errorMessage = "We couldn't save your tour progress. Please try again."
+            return false
+        }
     }
 
     private func authenticate(
@@ -303,6 +333,20 @@ final class AuthStore: ObservableObject {
         }
 
         setLoading(false)
+    }
+
+    private func initializeNewAccountIfNeeded(_ result: AuthDataResult) async throws {
+        guard result.additionalUserInfo?.isNewUser == true else { return }
+
+        try await sessionService.initializeNewUser(
+            userID: result.user.uid,
+            email: result.user.email
+        )
+        let snapshot = try await sessionService.loadSession(
+            userID: result.user.uid,
+            email: result.user.email
+        )
+        apply(snapshot: snapshot)
     }
 
     private func handleAuthChange(_ user: User?) async {
@@ -331,6 +375,7 @@ final class AuthStore: ObservableObject {
                 email: user.email ?? "",
                 familyID: nil,
                 onboardingCompleted: false,
+                hasCompletedAppTour: false,
                 selectedRole: nil,
                 selectedHeroID: nil
             )
@@ -365,6 +410,7 @@ final class AuthStore: ObservableObject {
                 email: profile.email,
                 familyID: profile.familyID,
                 onboardingCompleted: profile.onboardingCompleted,
+                hasCompletedAppTour: profile.hasCompletedAppTour,
                 selectedRole: profile.selectedRole,
                 selectedHeroID: heroID
             )
@@ -642,13 +688,19 @@ private enum FirebaseAppIsConfigured {
 }
 
 private extension Auth {
-    func signInAsync(with credential: AuthCredential) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            signIn(with: credential) { _, error in
+    func signInAsync(with credential: AuthCredential) async throws -> AuthDataResult {
+        try await withCheckedThrowingContinuation { continuation in
+            signIn(with: credential) { result, error in
                 if let error {
                     continuation.resume(throwing: error)
+                } else if let result {
+                    continuation.resume(returning: result)
                 } else {
-                    continuation.resume()
+                    continuation.resume(throwing: NSError(
+                        domain: "AuthStore",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Authentication completed without a result."]
+                    ))
                 }
             }
         }
@@ -666,13 +718,19 @@ private extension Auth {
         }
     }
 
-    func createUserAsync(withEmail email: String, password: String) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            createUser(withEmail: email, password: password) { _, error in
+    func createUserAsync(withEmail email: String, password: String) async throws -> AuthDataResult {
+        try await withCheckedThrowingContinuation { continuation in
+            createUser(withEmail: email, password: password) { result, error in
                 if let error {
                     continuation.resume(throwing: error)
+                } else if let result {
+                    continuation.resume(returning: result)
                 } else {
-                    continuation.resume()
+                    continuation.resume(throwing: NSError(
+                        domain: "AuthStore",
+                        code: -2,
+                        userInfo: [NSLocalizedDescriptionKey: "Account creation completed without a result."]
+                    ))
                 }
             }
         }

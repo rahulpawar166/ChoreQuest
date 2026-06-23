@@ -22,7 +22,7 @@ struct PrivacyPolicyView: View {
                 paragraphs: [
                     "Parent account information: email address, Firebase account identifier, selected sign-in provider, sign-in state, and account settings. Passwords are processed by Firebase Authentication and are not stored as readable text in the ChoreQuest family database. Apple or Google may provide an email address and basic account identity when a parent chooses those sign-in methods.",
                     "Family and child profile information: family name, crest, child display names, avatar selections, the Scout title, and optional parent or child profile photos.",
-                    "Family activity: quests, assignments, XP values, family contribution choices, rewards, reward claims, completion history, approval status, parent comments, feedback messages and categories, whether feedback came from Parent or Kid mode, and related timestamps.",
+                    "Family activity: quests, assignments, XP values, family contribution choices, rewards, reward claims, completion history, approval status, parent comments, app-tour completion, feedback messages and categories, whether feedback came from Parent or Kid mode, and related timestamps.",
                     "Photos: optional profile photos and photos submitted as chore proof. ChoreQuest receives only the photo a person chooses or captures for the app; it does not upload the entire photo library.",
                     "Device preferences: animation and haptic choices are stored locally on the device. Firebase may process limited device, network, authentication, and diagnostic information needed to deliver, secure, and maintain its services. ChoreQuest does not currently enable Firebase Analytics."
                 ]
