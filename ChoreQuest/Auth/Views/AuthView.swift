@@ -5,6 +5,7 @@
 //  Created by Rahul Pawar on 30/05/26.
 //
 
+import AuthenticationServices
 import SwiftUI
 
 struct AuthView: View {
@@ -151,6 +152,9 @@ struct AuthView: View {
             .buttonStyle(QuestPrimaryButtonStyle())
             .disabled(!canSubmit || authStore.isLoading)
             .opacity(canSubmit ? 1 : 0.56)
+
+            providerDivider
+            providerButtons
         }
         .padding(24)
         .background(
@@ -168,6 +172,88 @@ struct AuthView: View {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(ChoreQuestColors.surfaceContainerHigh, lineWidth: 2)
         )
+    }
+
+    private var providerDivider: some View {
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(ChoreQuestColors.outlineVariant)
+                .frame(height: 1)
+
+            Text("OR CONTINUE WITH")
+                .font(.custom("Quicksand", size: 11).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.outline)
+                .fixedSize()
+
+            Rectangle()
+                .fill(ChoreQuestColors.outlineVariant)
+                .frame(height: 1)
+        }
+    }
+
+    private var providerButtons: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "apple.logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+
+                    Text("Continue with Apple")
+                        .font(.custom("Quicksand", size: 16).weight(.bold))
+                }
+                .foregroundStyle(.white)
+                .accessibilityHidden(true)
+
+                SignInWithAppleButton(.continue) { request in
+                    authStore.prepareAppleRequest(request)
+                } onCompletion: { result in
+                    Task { await authStore.signInWithApple(result) }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .opacity(0.001)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background {
+                Capsule()
+                    .fill(.black)
+                    .shadow(color: .black.opacity(0.14), radius: 12, y: 6)
+            }
+            .contentShape(Capsule())
+
+            Button {
+                focusedField = nil
+                Task { await authStore.signInWithGoogle() }
+            } label: {
+                HStack(spacing: 12) {
+                    Image("GoogleG")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+
+                    Text("Continue with Google")
+                        .font(.custom("Quicksand", size: 16).weight(.bold))
+                }
+                .foregroundStyle(ChoreQuestColors.onSurface)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background {
+                    Capsule()
+                        .fill(ChoreQuestColors.surfaceContainerLowest)
+                        .shadow(color: ChoreQuestColors.primary.opacity(0.1), radius: 12, y: 6)
+                }
+                .overlay {
+                    Capsule()
+                        .stroke(ChoreQuestColors.outlineVariant.opacity(0.8), lineWidth: 1)
+                }
+            }
+            .buttonStyle(ProviderCapsuleButtonStyle())
+        }
+        .allowsHitTesting(!authStore.isLoading)
+        .opacity(authStore.isLoading ? 0.58 : 1)
     }
 
     private var modePicker: some View {
@@ -230,5 +316,14 @@ struct AuthView: View {
                 await authStore.signUp(email: trimmedEmail, password: password)
             }
         }
+    }
+}
+
+private struct ProviderCapsuleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

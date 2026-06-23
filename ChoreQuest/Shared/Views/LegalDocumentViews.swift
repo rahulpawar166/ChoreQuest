@@ -20,7 +20,7 @@ struct PrivacyPolicyView: View {
             ChoreQuestLegalSection(
                 title: "1. Information We Collect",
                 paragraphs: [
-                    "Parent account information: email address, Firebase account identifier, sign-in state, and account settings. Passwords are processed by Firebase Authentication and are not stored as readable text in the ChoreQuest family database.",
+                    "Parent account information: email address, Firebase account identifier, selected sign-in provider, sign-in state, and account settings. Passwords are processed by Firebase Authentication and are not stored as readable text in the ChoreQuest family database. Apple or Google may provide an email address and basic account identity when a parent chooses those sign-in methods.",
                     "Family and child profile information: family name, crest, child display names, avatar selections, the Scout title, and optional parent or child profile photos.",
                     "Family activity: quests, assignments, XP values, family contribution choices, rewards, reward claims, completion history, approval status, parent comments, feedback messages and categories, whether feedback came from Parent or Kid mode, and related timestamps.",
                     "Photos: optional profile photos and photos submitted as chore proof. ChoreQuest receives only the photo a person chooses or captures for the app; it does not upload the entire photo library.",
@@ -46,7 +46,7 @@ struct PrivacyPolicyView: View {
                 title: "4. Sharing and Service Providers",
                 paragraphs: [
                     "Family data is shared among devices signed in to the same family account so the app can work as intended.",
-                    "ChoreQuest uses Google Firebase, including Firebase Authentication and Cloud Firestore, to authenticate accounts and host synchronized app data. Firebase processes information on our behalf under its applicable terms and privacy protections.",
+                    "ChoreQuest uses Google Firebase, including Firebase Authentication and Cloud Firestore, to authenticate accounts and host synchronized app data. Firebase processes information on our behalf under its applicable terms and privacy protections. If a parent selects a social sign-in option, Apple or Google also processes the authentication request under its own privacy terms.",
                     "We may disclose information when reasonably necessary to comply with law, protect users, investigate misuse, or defend legal rights. We do not share child data with advertising networks or data brokers."
                 ]
             ),
@@ -116,7 +116,7 @@ struct TermsOfServiceView: View {
             ChoreQuestLegalSection(
                 title: "2. Accounts and Access",
                 paragraphs: [
-                    "The parent must provide accurate account information, keep credentials confidential, and restrict parent-mode access to authorized adults. Do not share a family account outside the household or allow a child to make account-level decisions without supervision.",
+                    "The parent must provide accurate account information, keep email/password, Apple, or Google credentials secure, and restrict parent-mode access to authorized adults. Do not share a family account outside the household or allow a child to make account-level decisions without supervision.",
                     "You are responsible for activity performed through your account and should promptly use the App Store support contact if you believe the account has been compromised."
                 ]
             ),

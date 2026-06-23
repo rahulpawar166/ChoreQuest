@@ -661,7 +661,9 @@ private struct DeleteAccountView: View {
     @State private var confirmationText = ""
 
     private var canDelete: Bool {
-        password.count >= 6 && confirmationText == "DELETE" && !authStore.isLoading
+        (!authStore.usesPasswordAuthentication || password.count >= 6)
+            && confirmationText == "DELETE"
+            && !authStore.isLoading
     }
 
     var body: some View {
@@ -685,8 +687,17 @@ private struct DeleteAccountView: View {
                 }
 
                 Section("Verify Parent Account") {
-                    SecureField("Account password", text: $password)
-                        .textContentType(.password)
+                    if authStore.usesPasswordAuthentication {
+                        SecureField("Account password", text: $password)
+                            .textContentType(.password)
+                    } else {
+                        Label(
+                            "For security, you may need to sign in with Apple or Google again before deleting.",
+                            systemImage: "person.badge.key.fill"
+                        )
+                        .font(.custom("Quicksand", size: 13).weight(.medium))
+                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                    }
 
                     TextField("Type DELETE to confirm", text: $confirmationText)
                         .textInputAutocapitalization(.characters)
@@ -731,7 +742,9 @@ private struct DeleteAccountView: View {
 
     private func deleteAccount() {
         Task {
-            let didDelete = await authStore.deleteAccount(password: password)
+            let didDelete = await authStore.deleteAccount(
+                password: authStore.usesPasswordAuthentication ? password : nil
+            )
             if didDelete { dismiss() }
         }
     }
