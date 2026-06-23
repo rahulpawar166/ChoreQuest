@@ -12,7 +12,6 @@ struct FamilySetupFlowView: View {
 
     @State private var draft = FamilyProfileDraft()
     @State private var step: OnboardingStep = .familyIdentity
-    @State private var isPresentingAppTour = false
 
     var body: some View {
         ZStack {
@@ -21,47 +20,58 @@ struct FamilySetupFlowView: View {
 
             QuestBackground()
 
-            switch step {
-            case .familyIdentity:
-                FamilyIdentityView(
-                    familyName: $draft.familyName,
-                    crestName: $draft.crestName,
-                    parentImageData: $draft.parentImageData,
-                    onContinue: { step = .heroSetup },
-                    isSaving: authStore.isLoading,
+            if authStore.userProfile?.hasCompletedAppTour == false {
+                ParentAppTourView(
+                    dismissWhenFinished: false,
+                    onFinish: authStore.completeAppTour
+                )
+            } else if authStore.userProfile?.hasAcceptedCurrentTerms == false {
+                TermsAcceptanceView(
+                    onAccept: authStore.acceptTermsOfService,
                     onSignOut: authStore.signOut
                 )
-            case .heroSetup:
-                HeroSetupView(
-                    familyName: draft.familyName,
-                    heroes: $draft.heroes,
-                    onBack: { step = .familyIdentity },
-                    isSaving: authStore.isLoading,
-                    onComplete: {
-                        Task {
-                            await authStore.completeOnboarding(with: draft)
-                        }
-                    },
-                    onSignOut: authStore.signOut
-                )
+            } else {
+                setupContent
             }
         }
         .animation(.spring(response: 0.36, dampingFraction: 0.84), value: step)
+        .animation(
+            .spring(response: 0.42, dampingFraction: 0.86),
+            value: authStore.userProfile?.hasCompletedAppTour
+        )
+        .animation(
+            .spring(response: 0.42, dampingFraction: 0.86),
+            value: authStore.userProfile?.acceptedTermsVersion
+        )
         .questToast(message: $authStore.errorMessage)
-        .fullScreenCover(isPresented: $isPresentingAppTour) {
-            ParentAppTourView(onFinish: authStore.completeAppTour)
-        }
-        .onAppear {
-            presentAppTourIfNeeded()
-        }
-        .onChange(of: authStore.userProfile?.hasCompletedAppTour) { _, _ in
-            presentAppTourIfNeeded()
-        }
     }
 
-    private func presentAppTourIfNeeded() {
-        guard authStore.userProfile?.hasCompletedAppTour == false else { return }
-        isPresentingAppTour = true
+    @ViewBuilder
+    private var setupContent: some View {
+        switch step {
+        case .familyIdentity:
+            FamilyIdentityView(
+                familyName: $draft.familyName,
+                crestName: $draft.crestName,
+                parentImageData: $draft.parentImageData,
+                onContinue: { step = .heroSetup },
+                isSaving: authStore.isLoading,
+                onSignOut: authStore.signOut
+            )
+        case .heroSetup:
+            HeroSetupView(
+                familyName: draft.familyName,
+                heroes: $draft.heroes,
+                onBack: { step = .familyIdentity },
+                isSaving: authStore.isLoading,
+                onComplete: {
+                    Task {
+                        await authStore.completeOnboarding(with: draft)
+                    }
+                },
+                onSignOut: authStore.signOut
+            )
+        }
     }
 }
 

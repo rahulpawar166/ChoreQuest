@@ -10,7 +10,16 @@ struct ParentAppTourView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("appAnimationsEnabled") private var animationsEnabled = true
 
+    let dismissWhenFinished: Bool
     let onFinish: () async -> Bool
+
+    init(
+        dismissWhenFinished: Bool = true,
+        onFinish: @escaping () async -> Bool
+    ) {
+        self.dismissWhenFinished = dismissWhenFinished
+        self.onFinish = onFinish
+    }
 
     @State private var selectedPage = 0
     @State private var isFinishing = false
@@ -334,10 +343,12 @@ struct ParentAppTourView: View {
         Task {
             let didFinish = await onFinish()
             isFinishing = false
-            if didFinish {
+            if didFinish, dismissWhenFinished {
                 dismiss()
             } else {
-                errorMessage = "We couldn't save that the tour was completed. Please try again."
+                if !didFinish {
+                    errorMessage = "We couldn't save that the tour was completed. Please try again."
+                }
             }
         }
     }

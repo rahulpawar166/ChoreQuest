@@ -211,6 +211,10 @@ final class AuthStore: ObservableObject {
             route = .auth
             return
         }
+        guard userProfile?.hasAcceptedCurrentTerms == true else {
+            errorMessage = "Please accept the Terms of Service before creating your Squad."
+            return
+        }
 
         setLoading(true, message: "Saving your family setup...")
         errorMessage = nil
@@ -247,6 +251,7 @@ final class AuthStore: ObservableObject {
                     familyID: profile.familyID,
                     onboardingCompleted: profile.onboardingCompleted,
                     hasCompletedAppTour: profile.hasCompletedAppTour,
+                    acceptedTermsVersion: profile.acceptedTermsVersion,
                     selectedRole: role,
                     selectedHeroID: profile.selectedHeroID
                 )
@@ -277,6 +282,7 @@ final class AuthStore: ObservableObject {
                     familyID: profile.familyID,
                     onboardingCompleted: profile.onboardingCompleted,
                     hasCompletedAppTour: profile.hasCompletedAppTour,
+                    acceptedTermsVersion: profile.acceptedTermsVersion,
                     selectedRole: nil,
                     selectedHeroID: nil
                 )
@@ -304,12 +310,40 @@ final class AuthStore: ObservableObject {
                 familyID: profile.familyID,
                 onboardingCompleted: profile.onboardingCompleted,
                 hasCompletedAppTour: true,
+                acceptedTermsVersion: profile.acceptedTermsVersion,
                 selectedRole: profile.selectedRole,
                 selectedHeroID: profile.selectedHeroID
             )
             return true
         } catch {
             errorMessage = "We couldn't save your tour progress. Please try again."
+            return false
+        }
+    }
+
+    func acceptTermsOfService() async -> Bool {
+        guard let currentUserID, let profile = userProfile else { return false }
+
+        setLoading(true, message: "Saving your agreement...")
+        errorMessage = nil
+        defer { setLoading(false) }
+
+        do {
+            let version = UserProfile.currentTermsVersion
+            try await sessionService.updateTermsAccepted(userID: currentUserID, version: version)
+            userProfile = UserProfile(
+                userID: profile.userID,
+                email: profile.email,
+                familyID: profile.familyID,
+                onboardingCompleted: profile.onboardingCompleted,
+                hasCompletedAppTour: profile.hasCompletedAppTour,
+                acceptedTermsVersion: version,
+                selectedRole: profile.selectedRole,
+                selectedHeroID: profile.selectedHeroID
+            )
+            return true
+        } catch {
+            errorMessage = "We couldn't save your Terms acceptance. Please try again."
             return false
         }
     }
@@ -376,6 +410,7 @@ final class AuthStore: ObservableObject {
                 familyID: nil,
                 onboardingCompleted: false,
                 hasCompletedAppTour: false,
+                acceptedTermsVersion: nil,
                 selectedRole: nil,
                 selectedHeroID: nil
             )
@@ -411,6 +446,7 @@ final class AuthStore: ObservableObject {
                 familyID: profile.familyID,
                 onboardingCompleted: profile.onboardingCompleted,
                 hasCompletedAppTour: profile.hasCompletedAppTour,
+                acceptedTermsVersion: profile.acceptedTermsVersion,
                 selectedRole: profile.selectedRole,
                 selectedHeroID: heroID
             )

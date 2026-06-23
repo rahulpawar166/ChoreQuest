@@ -22,6 +22,7 @@ final class FirestoreSessionService {
             "email": email ?? "",
             "onboardingCompleted": false,
             "hasCompletedAppTour": false,
+            "acceptedTermsVersion": NSNull(),
             "selectedRole": NSNull(),
             "selectedHeroID": NSNull(),
             "createdAt": FieldValue.serverTimestamp(),
@@ -98,6 +99,7 @@ final class FirestoreSessionService {
             "familyID": familyID,
             "onboardingCompleted": true,
             "hasCompletedAppTour": true,
+            "acceptedTermsVersion": UserProfile.currentTermsVersion,
             "selectedRole": NSNull(),
             "selectedHeroID": NSNull(),
             "updatedAt": FieldValue.serverTimestamp()
@@ -112,6 +114,7 @@ final class FirestoreSessionService {
             familyID: familyID,
             onboardingCompleted: true,
             hasCompletedAppTour: true,
+            acceptedTermsVersion: UserProfile.currentTermsVersion,
             selectedRole: nil,
             selectedHeroID: nil
         )
@@ -140,6 +143,15 @@ final class FirestoreSessionService {
         let data: [String: Any] = [
             "hasCompletedAppTour": true,
             "appTourCompletedAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await db.collection("users").document(userID).setDataAsync(data, merge: true)
+    }
+
+    func updateTermsAccepted(userID: String, version: String) async throws {
+        let data: [String: Any] = [
+            "acceptedTermsVersion": version,
+            "termsAcceptedAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp()
         ]
         try await db.collection("users").document(userID).setDataAsync(data, merge: true)
@@ -305,6 +317,7 @@ final class FirestoreSessionService {
             familyID: data["familyID"] as? String,
             onboardingCompleted: data["onboardingCompleted"] as? Bool ?? false,
             hasCompletedAppTour: data["hasCompletedAppTour"] as? Bool ?? true,
+            acceptedTermsVersion: data["acceptedTermsVersion"] as? String,
             selectedRole: selectedRole,
             selectedHeroID: data["selectedHeroID"] as? String
         )
