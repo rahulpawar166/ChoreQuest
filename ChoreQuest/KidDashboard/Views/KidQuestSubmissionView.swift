@@ -67,7 +67,7 @@ struct KidQuestSubmissionView: View {
             }
         }
         .fullScreenCover(item: $sourceType) { source in
-            CameraLibraryImagePicker(sourceType: source) { data in
+            CameraLibraryImagePicker(sourceType: source, processingPurpose: .proof) { data in
                 proofImageData = data
             }
             .ignoresSafeArea()
@@ -193,9 +193,12 @@ struct KidQuestSubmissionView: View {
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 40, height: 40)
-                                    .background(Color.black.opacity(0.76))
-                                    .clipShape(Circle())
-                                    .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                                    .background {
+                                        Circle()
+                                            .fill(Color.black.opacity(0.76))
+                                            .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                                    }
+                                    .contentShape(Circle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Expand proof photo")
@@ -211,9 +214,12 @@ struct KidQuestSubmissionView: View {
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 40, height: 40)
-                                    .background(ChoreQuestColors.error)
-                                    .clipShape(Circle())
-                                    .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                                    .background {
+                                        Circle()
+                                            .fill(ChoreQuestColors.error)
+                                            .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                                    }
+                                    .contentShape(Circle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Remove proof photo")
@@ -256,15 +262,18 @@ struct KidQuestSubmissionView: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 22)
-            .background(
-                LinearGradient(
-                    colors: [ChoreQuestColors.primary, ChoreQuestColors.primaryContainer],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .shadow(color: ChoreQuestColors.primary.opacity(0.18), radius: 22, y: 10)
+            .background {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [ChoreQuestColors.primary, ChoreQuestColors.primaryContainer],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: ChoreQuestColors.primary.opacity(0.18), radius: 22, y: 10)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(proofImageData == nil || isSubmitting)

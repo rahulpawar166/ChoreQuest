@@ -97,9 +97,12 @@ struct QuestPrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .frame(minHeight: 58)
             .padding(.horizontal, 22)
-            .background(ChoreQuestColors.primary)
-            .clipShape(Capsule())
-            .shadow(color: ChoreQuestColors.primaryShadow, radius: 0, y: configuration.isPressed ? 0 : 4)
+            .background {
+                Capsule()
+                    .fill(ChoreQuestColors.primary)
+                    .shadow(color: ChoreQuestColors.primaryShadow, radius: 0, y: configuration.isPressed ? 0 : 4)
+            }
+            .contentShape(Capsule())
             .offset(y: configuration.isPressed ? 4 : 0)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

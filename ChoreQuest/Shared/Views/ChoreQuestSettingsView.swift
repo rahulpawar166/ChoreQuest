@@ -500,6 +500,7 @@ private struct PrivacyAndDataView: View {
             }
         }
         .formStyle(.grouped)
+        .tint(ChoreQuestColors.primary)
         .scrollContentBackground(.hidden)
         .background(ChoreQuestColors.background.ignoresSafeArea())
         .navigationTitle("Privacy & Data")

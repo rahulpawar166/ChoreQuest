@@ -58,14 +58,22 @@ final class FirestoreSessionService {
     func completeOnboarding(userID: String, email: String?, draft: FamilyProfileDraft) async throws -> SessionSnapshot {
         let trimmedFamilyName = draft.familyName.trimmingCharacters(in: .whitespacesAndNewlines)
         let familyID = userID
+        let profilePhotoCount = draft.heroes.compactMap(\.imageData).count + (draft.parentImageData == nil ? 0 : 1)
+        let perPhotoBudget = profilePhotoCount == 0
+            ? QuestImagePurpose.profile.maximumBytes
+            : min(QuestImagePurpose.profile.maximumBytes, 560_000 / profilePhotoCount)
+        let optimizedParentImageData = QuestImageProcessor.profileData(
+            from: draft.parentImageData,
+            maximumBytes: perPhotoBudget
+        )
 
-        let heroes = draft.heroes.map(heroProfileFromDraft)
+        let heroes = draft.heroes.map { heroProfileFromDraft($0, maximumImageBytes: perPhotoBudget) }
         let familyData: [String: Any] = [
             "id": familyID,
             "ownerUserID": userID,
             "familyName": trimmedFamilyName,
             "crestName": draft.crestName,
-            "parentImageBase64": draft.parentImageData?.base64EncodedString() as Any,
+            "parentImageBase64": optimizedParentImageData?.base64EncodedString() as Any,
             "heroes": heroes.map(heroDictionary),
             "updatedAt": FieldValue.serverTimestamp()
         ]
@@ -96,7 +104,7 @@ final class FirestoreSessionService {
             id: familyID,
             familyName: trimmedFamilyName,
             crestName: draft.crestName,
-            parentImageBase64: draft.parentImageData?.base64EncodedString(),
+            parentImageBase64: optimizedParentImageData?.base64EncodedString(),
             familyReward: nil,
             heroes: heroes
         )
@@ -135,10 +143,11 @@ final class FirestoreSessionService {
         crestName: String,
         parentImageData: Data?
     ) async throws -> FamilyProfile {
+        let optimizedImageData = QuestImageProcessor.profileData(from: parentImageData)
         let data: [String: Any] = [
             "familyName": familyName.trimmingCharacters(in: .whitespacesAndNewlines),
             "crestName": crestName,
-            "parentImageBase64": parentImageData?.base64EncodedString() as Any,
+            "parentImageBase64": optimizedImageData?.base64EncodedString() as Any,
             "updatedAt": FieldValue.serverTimestamp()
         ]
 
@@ -148,7 +157,7 @@ final class FirestoreSessionService {
             id: familyID,
             familyName: familyName,
             crestName: crestName,
-            parentImageBase64: parentImageData?.base64EncodedString(),
+            parentImageBase64: optimizedImageData?.base64EncodedString(),
             familyReward: nil,
             heroes: []
         )
@@ -165,6 +174,7 @@ final class FirestoreSessionService {
         let snapshot = try await reference.getDocumentAsync()
         guard var data = snapshot.data() else { return nil }
 
+        let optimizedImageData = QuestImageProcessor.profileData(from: imageData)
         var heroes = data["heroes"] as? [[String: Any]] ?? []
         heroes = heroes.map { hero in
             guard (hero["id"] as? String) == heroID else { return hero }
@@ -175,7 +185,7 @@ final class FirestoreSessionService {
             updated["avatarName"] = avatar.name
             updated["avatarIconName"] = avatar.iconName
             updated["avatarColorHex"] = Int(avatar.colorHex)
-            updated["imageBase64"] = imageData?.base64EncodedString() as Any
+            updated["imageBase64"] = optimizedImageData?.base64EncodedString() as Any
             return updated
         }
 
@@ -239,6 +249,7 @@ final class FirestoreSessionService {
         guard var data = snapshot.data() else { return nil }
 
         var heroes = data["heroes"] as? [[String: Any]] ?? []
+        let optimizedImageData = QuestImageProcessor.profileData(from: imageData)
         let newHero = HeroProfile(
             id: UUID().uuidString,
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -246,7 +257,7 @@ final class FirestoreSessionService {
             avatarName: avatar.name,
             avatarIconName: avatar.iconName,
             avatarColorHex: avatar.colorHex,
-            imageBase64: imageData?.base64EncodedString(),
+            imageBase64: optimizedImageData?.base64EncodedString(),
             heroTitle: "Scout"
         )
 
@@ -306,15 +317,19 @@ final class FirestoreSessionService {
         )
     }
 
-    private func heroProfileFromDraft(_ draft: HeroProfileDraft) -> HeroProfile {
-        HeroProfile(
+    private func heroProfileFromDraft(_ draft: HeroProfileDraft, maximumImageBytes: Int) -> HeroProfile {
+        let optimizedImageData = QuestImageProcessor.profileData(
+            from: draft.imageData,
+            maximumBytes: maximumImageBytes
+        )
+        return HeroProfile(
             id: draft.id.uuidString,
             name: draft.name,
             avatarID: draft.avatar.id,
             avatarName: draft.avatar.name,
             avatarIconName: draft.avatar.iconName,
             avatarColorHex: draft.avatar.colorHex,
-            imageBase64: draft.imageData?.base64EncodedString(),
+            imageBase64: optimizedImageData?.base64EncodedString(),
             heroTitle: draft.heroTitle
         )
     }

@@ -274,8 +274,12 @@ struct KidDashboardView: View {
                                 size: 78,
                                 borderColor: ChoreQuestColors.secondary
                             )
-                            .background(.white, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
-                            .shadow(color: .black.opacity(0.16), radius: 0, y: 5)
+                            .background {
+                                RoundedRectangle(cornerRadius: 27, style: .continuous)
+                                    .fill(.white)
+                                    .shadow(color: .black.opacity(0.16), radius: 0, y: 5)
+                            }
+                            .contentShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
                             .offset(y: isHeroFloating ? -4 : 3)
                         }
                         .buttonStyle(.plain)

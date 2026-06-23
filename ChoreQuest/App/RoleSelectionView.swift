@@ -166,9 +166,12 @@ private struct RoleCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(22)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .shadow(color: accent.opacity(0.14), radius: 22, y: 10)
+            .background {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(background)
+                    .shadow(color: accent.opacity(0.14), radius: 22, y: 10)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
         .buttonStyle(.plain)
     }

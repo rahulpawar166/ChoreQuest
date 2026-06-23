@@ -125,7 +125,7 @@ final class AuthStore: ObservableObject {
             )
             apply(snapshot: snapshot)
         } catch {
-            errorMessage = "We couldn't save your family setup right now."
+            errorMessage = onboardingMessage(for: error)
         }
 
         setLoading(false)
@@ -460,6 +460,20 @@ final class AuthStore: ObservableObject {
         default:
             return error.localizedDescription
         }
+    }
+
+    private func onboardingMessage(for error: Error) -> String {
+        let message = error.localizedDescription.lowercased()
+
+        if message.contains("exceeds the maximum allowed size") || message.contains("maximum size") {
+            return "Your squad has more photo data than we can safely save. Remove one or more profile photos and try again."
+        }
+
+        if message.contains("network") || message.contains("offline") {
+            return "The network dropped while saving your squad. Your setup is still here—please try again."
+        }
+
+        return "We couldn't save your squad yet. Your setup is still here, so you can try again."
     }
 
     private func setLoading(_ loading: Bool, message: String? = nil) {

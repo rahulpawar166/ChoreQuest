@@ -89,9 +89,12 @@ struct ParentDashboardView: View {
                                     .font(.system(size: 24, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 60, height: 60)
-                                    .background(ChoreQuestColors.primary)
-                                    .clipShape(Circle())
-                                    .shadow(color: ChoreQuestColors.primary.opacity(0.28), radius: 18, y: 10)
+                                    .background {
+                                        Circle()
+                                            .fill(ChoreQuestColors.primary)
+                                            .shadow(color: ChoreQuestColors.primary.opacity(0.28), radius: 18, y: 10)
+                                    }
+                                    .contentShape(Circle())
                             }
                         }
                         .padding(.horizontal, 24)

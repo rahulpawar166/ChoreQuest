@@ -818,9 +818,12 @@ struct ParentActionPillStyle: ButtonStyle {
             .foregroundStyle(foreground)
             .padding(.horizontal, 18)
             .frame(height: 52)
-            .background(background)
-            .clipShape(Capsule())
-            .shadow(color: background.opacity(0.22), radius: 0, y: configuration.isPressed ? 0 : 4)
+            .background {
+                Capsule()
+                    .fill(background)
+                    .shadow(color: background.opacity(0.22), radius: 0, y: configuration.isPressed ? 0 : 4)
+            }
+            .contentShape(Capsule())
             .offset(y: configuration.isPressed ? 3 : 0)
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

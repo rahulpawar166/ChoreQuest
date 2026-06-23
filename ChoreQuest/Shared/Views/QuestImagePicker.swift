@@ -55,22 +55,22 @@ struct QuestImagePickerCard: View {
                 Text(subtitle)
                     .font(.custom("Quicksand", size: 15).weight(.medium))
                     .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-
-                HStack(spacing: 8) {
-                    miniActionButton(label: "Gallery", icon: "photo.on.rectangle") {
-                        Task {
-                            await requestPickerAccess(for: .photoLibrary)
-                        }
-                    }
-
-                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                        miniActionButton(label: "Camera", icon: "camera.fill") {
-                            Task {
-                                await requestPickerAccess(for: .camera)
-                            }
-                        }
-                    }
-                }
+//
+//                HStack(spacing: 8) {
+//                    miniActionButton(label: "Gallery", icon: "photo.on.rectangle") {
+//                        Task {
+//                            await requestPickerAccess(for: .photoLibrary)
+//                        }
+//                    }
+//
+//                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+//                        miniActionButton(label: "Camera", icon: "camera.fill") {
+//                            Task {
+//                                await requestPickerAccess(for: .camera)
+//                            }
+//                        }
+//                    }
+//                }
             }
         }
         .padding(18)
@@ -172,10 +172,21 @@ struct QuestImagePickerCard: View {
 
 struct CameraLibraryImagePicker: UIViewControllerRepresentable {
     let sourceType: UIImagePickerController.SourceType
+    let processingPurpose: QuestImagePurpose
     let onImagePicked: (Data?) -> Void
 
+    init(
+        sourceType: UIImagePickerController.SourceType,
+        processingPurpose: QuestImagePurpose = .profile,
+        onImagePicked: @escaping (Data?) -> Void
+    ) {
+        self.sourceType = sourceType
+        self.processingPurpose = processingPurpose
+        self.onImagePicked = onImagePicked
+    }
+
     func makeCoordinator() -> Coordinator {
-        Coordinator(onImagePicked: onImagePicked)
+        Coordinator(processingPurpose: processingPurpose, onImagePicked: onImagePicked)
     }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -189,9 +200,11 @@ struct CameraLibraryImagePicker: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
 
     final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let processingPurpose: QuestImagePurpose
         let onImagePicked: (Data?) -> Void
 
-        init(onImagePicked: @escaping (Data?) -> Void) {
+        init(processingPurpose: QuestImagePurpose, onImagePicked: @escaping (Data?) -> Void) {
+            self.processingPurpose = processingPurpose
             self.onImagePicked = onImagePicked
         }
 
@@ -203,7 +216,9 @@ struct CameraLibraryImagePicker: UIViewControllerRepresentable {
             let editedImage = info[.editedImage] as? UIImage
             let originalImage = info[.originalImage] as? UIImage
             let selectedImage = editedImage ?? originalImage
-            let data = selectedImage?.jpegData(compressionQuality: 0.75)
+            let data = selectedImage.flatMap {
+                QuestImageProcessor.jpegData(from: $0, purpose: processingPurpose)
+            }
 
             picker.dismiss(animated: true) {
                 self.onImagePicked(data)
