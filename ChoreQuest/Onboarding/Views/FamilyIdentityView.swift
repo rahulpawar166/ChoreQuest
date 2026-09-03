@@ -92,13 +92,19 @@ struct FamilyIdentityView: View {
             }
 
             VStack(alignment: .leading, spacing: 12) {
-                Label("Add the Parent Profile Photo", systemImage: "person.crop.circle.badge.plus")
+                Label("Choose the Parent Avatar", systemImage: "person.crop.circle.badge.plus")
                     .font(.custom("Quicksand", size: 20).weight(.bold))
                     .foregroundStyle(ChoreQuestColors.onSurface)
 
+                LocalAvatarPickerSection(
+                    title: "Choose a Parent Avatar",
+                    options: LocalAvatarOption.parents,
+                    selectedImageData: $parentImageData
+                )
+
                 QuestImagePickerCard(
-                    title: "Use camera or gallery",
-                    subtitle: "Add the parent photo now so this account feels personal from the first quest.",
+                    title: "Selected parent avatar",
+                    subtitle: "Use the plus button to choose from camera or gallery, or pick a default avatar above.",
                     fallbackSystemImage: "person.crop.circle.fill",
                     accentColor: ChoreQuestColors.primary,
                     imageData: $parentImageData

@@ -90,11 +90,15 @@ struct HeroSetupView: View {
 
     private var avatarSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            AvatarTokenPickerSection(title: "Choose an Animal Token", selectedAvatar: $selectedAvatar)
+            AvatarTokenPickerSection(
+                title: "Choose a Kid Avatar",
+                selectedAvatar: $selectedAvatar,
+                selectedImageData: $heroImageData
+            )
 
             QuestImagePickerCard(
-                title: "Or add a real hero photo",
-                subtitle: "Use the gallery or camera to personalize this hero profile.",
+                title: "Selected hero avatar",
+                subtitle: "Use the plus button to choose from camera or gallery, or pick a default avatar above.",
                 fallbackSystemImage: "person.crop.circle.fill",
                 accentColor: ChoreQuestColors.primary,
                 imageData: $heroImageData

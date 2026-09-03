@@ -317,6 +317,7 @@ struct ParentApprovalCard: View {
     let isUpdating: Bool
     let onApprove: () async -> Void
     let onReject: () -> Void
+    @State private var isShowingProofPreview = false
 
     var body: some View {
         ParentSurfaceCard {
@@ -358,26 +359,50 @@ struct ParentApprovalCard: View {
                         .fixedSize(horizontal: true, vertical: false)
                 }
 
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: approval.accentHex).opacity(0.18),
-                                ChoreQuestColors.surfaceContainer
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(height: 170)
-                    .overlay(alignment: .topLeading) {
-                        proofPreview
-                    }
+                proofPanel
 
+                reviewHeader
                 approvalActionButtons
             }
         }
         .opacity(isUpdating ? 0.72 : 1)
+        .fullScreenCover(isPresented: $isShowingProofPreview) {
+            if let proofImage = decodedProofImage {
+                ProofImagePreviewView(
+                    image: proofImage,
+                    title: approval.choreTitle
+                )
+            }
+        }
+    }
+
+    private var proofPanel: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color(hex: approval.accentHex).opacity(0.18),
+                        ChoreQuestColors.surfaceContainer
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(height: 180)
+            .overlay {
+                proofPreview
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .onTapGesture {
+                if decodedProofImage != nil {
+                    isShowingProofPreview = true
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(ChoreQuestColors.primaryFixed.opacity(0.7), lineWidth: 1)
+            }
     }
 
     @ViewBuilder
@@ -431,6 +456,28 @@ struct ParentApprovalCard: View {
         .padding(18)
     }
 
+    private var reviewHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(ChoreQuestColors.tertiary)
+
+            Text("Review proof")
+                .font(.custom("Quicksand", size: 13).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.onSurface)
+
+            Spacer()
+
+            Text("Tap image to zoom")
+                .font(.custom("Quicksand", size: 11).weight(.bold))
+                .foregroundStyle(ChoreQuestColors.primary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(ChoreQuestColors.surfaceContainerLow)
+                .clipShape(Capsule())
+        }
+    }
+
     private var approvalActionButtons: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 12) {
@@ -450,9 +497,13 @@ struct ParentApprovalCard: View {
             Task { await onApprove() }
         } label: {
             Label("Approve", systemImage: "checkmark.circle.fill")
+                .font(.custom("Quicksand", size: 13).weight(.bold))
                 .frame(maxWidth: .infinity)
+                .frame(height: 42)
         }
-        .buttonStyle(ParentActionPillStyle(background: ChoreQuestColors.tertiary, foreground: .white))
+        .buttonStyle(.glassProminent)
+        .buttonBorderShape(.capsule)
+        .tint(ChoreQuestColors.tertiary)
         .disabled(isUpdating)
     }
 
@@ -461,9 +512,13 @@ struct ParentApprovalCard: View {
             onReject()
         } label: {
             Label("Reject", systemImage: "xmark.circle")
+                .font(.custom("Quicksand", size: 13).weight(.bold))
                 .frame(maxWidth: .infinity)
+                .frame(height: 42)
         }
-        .buttonStyle(ParentOutlinePillStyle())
+        .buttonStyle(.glassProminent)
+        .buttonBorderShape(.capsule)
+        .tint(ChoreQuestColors.error)
         .disabled(isUpdating)
     }
 
@@ -476,6 +531,115 @@ struct ParentApprovalCard: View {
         }
 
         return image
+    }
+}
+
+private struct ProofImagePreviewView: View {
+    @Environment(\.dismiss) private var dismiss
+    let image: UIImage
+    let title: String
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                ZoomableImageView(image: image)
+                    .ignoresSafeArea(edges: .bottom)
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.custom("Quicksand", size: 14).weight(.bold))
+                }
+            }
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.black, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+}
+
+private struct ZoomableImageView: UIViewRepresentable {
+    let image: UIImage
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scrollView = UIScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.minimumZoomScale = 1
+        scrollView.maximumZoomScale = 5
+        scrollView.bouncesZoom = true
+        scrollView.backgroundColor = .black
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
+
+        let imageView = UIImageView(image: image)
+        imageView.contentMode = .scaleAspectFit
+        imageView.isUserInteractionEnabled = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+
+        scrollView.addSubview(imageView)
+        context.coordinator.imageView = imageView
+        context.coordinator.scrollView = scrollView
+
+        NSLayoutConstraint.activate([
+            imageView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            imageView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            imageView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            imageView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
+        ])
+
+        let doubleTap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleDoubleTap(_:))
+        )
+        doubleTap.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(doubleTap)
+
+        return scrollView
+    }
+
+    func updateUIView(_ scrollView: UIScrollView, context: Context) {
+        context.coordinator.imageView?.image = image
+    }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        weak var imageView: UIImageView?
+        weak var scrollView: UIScrollView?
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            imageView
+        }
+
+        @objc func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let scrollView else { return }
+
+            if scrollView.zoomScale > scrollView.minimumZoomScale {
+                scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
+            } else {
+                let point = recognizer.location(in: imageView)
+                let zoomScale = min(scrollView.maximumZoomScale, 2.5)
+                let width = scrollView.bounds.width / zoomScale
+                let height = scrollView.bounds.height / zoomScale
+                let rect = CGRect(
+                    x: point.x - width / 2,
+                    y: point.y - height / 2,
+                    width: width,
+                    height: height
+                )
+                scrollView.zoom(to: rect, animated: true)
+            }
+        }
     }
 }
 

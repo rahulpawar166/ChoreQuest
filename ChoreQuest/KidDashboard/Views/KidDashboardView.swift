@@ -118,6 +118,7 @@ struct KidDashboardView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -129,6 +130,7 @@ struct KidDashboardView: View {
                     }
                 }
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .onAppear {
             guard animationsEnabled, !reduceMotion else { return }

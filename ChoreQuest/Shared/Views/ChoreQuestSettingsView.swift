@@ -16,7 +16,6 @@ struct ChoreQuestSettingsView: View {
 
     @AppStorage("appAnimationsEnabled") private var animationsEnabled = true
     @AppStorage("appHapticsEnabled") private var hapticsEnabled = true
-    @State private var presentedSheet: SettingsSheet?
     @State private var isConfirmingRoleSwitch = false
     @State private var isConfirmingSignOut = false
 
@@ -42,43 +41,6 @@ struct ChoreQuestSettingsView: View {
                 QuestBackground()
             }
             .ignoresSafeArea()
-        }
-        .sheet(item: $presentedSheet) { sheet in
-            switch sheet {
-            case .family(let familyProfile):
-                FamilyProfileEditorView(
-                    familyProfile: familyProfile,
-                    isSaving: authStore.isLoading
-                ) { familyName, crestName, parentImageData in
-                    await authStore.updateFamilyProfile(
-                        familyName: familyName,
-                        crestName: crestName,
-                        parentImageData: parentImageData
-                    )
-                } onAddHero: { name, avatar, imageData in
-                    await authStore.addHeroProfile(name: name, avatar: avatar, imageData: imageData)
-                }
-
-            case .hero(let hero):
-                HeroProfileEditorView(hero: hero, isSaving: authStore.isLoading) { name, avatar, imageData in
-                    await authStore.updateHeroProfile(
-                        heroID: hero.id,
-                        name: name,
-                        avatar: avatar,
-                        imageData: imageData
-                    )
-                }
-
-            case .familyReward(let reward):
-                FamilyRewardEditorView(
-                    currentReward: reward,
-                    isSaving: authStore.isLoading
-                ) { title, goalXP in
-                    await authStore.updateFamilyReward(title: title, goalXP: goalXP)
-                } onDelete: {
-                    await authStore.clearFamilyReward()
-                }
-            }
         }
         .alert("Switch Device Mode?", isPresented: $isConfirmingRoleSwitch) {
             Button("Cancel", role: .cancel) {}
@@ -148,32 +110,59 @@ struct ChoreQuestSettingsView: View {
     private var parentManagementSection: some View {
         Section("Family Management") {
             if let familyProfile = authStore.familyProfile {
-                settingsButton(
+                settingsNavigationLink(
                     title: "Family Profile & Kids",
                     subtitle: "Update the family name, crest, parent image, or add a child.",
                     icon: "person.3.fill",
                     color: ChoreQuestColors.primary
                 ) {
-                    presentedSheet = .family(familyProfile)
+                    FamilyProfileEditorView(
+                        familyProfile: familyProfile,
+                        isSaving: authStore.isLoading,
+                        usesNavigationStack: false
+                    ) { familyName, crestName, parentImageData in
+                        await authStore.updateFamilyProfile(
+                            familyName: familyName,
+                            crestName: crestName,
+                            parentImageData: parentImageData
+                        )
+                    } onAddHero: { name, avatar, imageData in
+                        await authStore.addHeroProfile(name: name, avatar: avatar, imageData: imageData)
+                    }
                 }
 
-                settingsButton(
+                settingsNavigationLink(
                     title: familyProfile.familyReward == nil ? "Create Family Reward" : "Family Reward",
                     subtitle: "Set the shared XP goal and team reward.",
                     icon: "party.popper.fill",
                     color: ChoreQuestColors.coral
                 ) {
-                    presentedSheet = .familyReward(familyProfile.familyReward)
+                    FamilyRewardEditorView(
+                        currentReward: familyProfile.familyReward,
+                        isSaving: authStore.isLoading,
+                        usesNavigationStack: false
+                    ) { title, goalXP in
+                        await authStore.updateFamilyReward(title: title, goalXP: goalXP)
+                    } onDelete: {
+                        await authStore.clearFamilyReward()
+                    }
                 }
 
                 ForEach(familyProfile.heroes) { hero in
-                    settingsButton(
+                    settingsNavigationLink(
                         title: hero.name,
                         subtitle: "Edit hero profile and avatar.",
                         icon: hero.avatarIconName,
                         color: Color(hex: hero.avatarColorHex)
                     ) {
-                        presentedSheet = .hero(hero)
+                        HeroProfileEditorView(hero: hero, isSaving: authStore.isLoading, usesNavigationStack: false) { name, avatar, imageData in
+                            await authStore.updateHeroProfile(
+                                heroID: hero.id,
+                                name: name,
+                                avatar: avatar,
+                                imageData: imageData
+                            )
+                        }
                     }
                 }
             }
@@ -184,13 +173,20 @@ struct ChoreQuestSettingsView: View {
     private var kidProfileSection: some View {
         Section("Hero") {
             if let selectedHero {
-                settingsButton(
+                settingsNavigationLink(
                     title: "Edit My Profile",
                     subtitle: "Change your name, animal token, or photo.",
                     icon: "person.crop.circle.fill",
                     color: ChoreQuestColors.primary
                 ) {
-                    presentedSheet = .hero(selectedHero)
+                    HeroProfileEditorView(hero: selectedHero, isSaving: authStore.isLoading, usesNavigationStack: false) { name, avatar, imageData in
+                        await authStore.updateHeroProfile(
+                            heroID: selectedHero.id,
+                            name: name,
+                            avatar: avatar,
+                            imageData: imageData
+                        )
+                    }
                 }
             }
 
@@ -339,6 +335,20 @@ struct ChoreQuestSettingsView: View {
         .buttonStyle(.plain)
     }
 
+    private func settingsNavigationLink<Destination: View>(
+        title: String,
+        subtitle: String,
+        icon: String,
+        color: Color,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            settingsRow(title: title, subtitle: subtitle, icon: icon, color: color)
+        }
+    }
+
     private func settingsRow(
         title: String,
         subtitle: String,
@@ -378,24 +388,8 @@ struct ChoreQuestSettingsView: View {
     }
 }
 
-private enum SettingsSheet: Identifiable {
-    case family(FamilyProfile)
-    case hero(HeroProfile)
-    case familyReward(FamilyGoalReward?)
-
-    var id: String {
-        switch self {
-        case .family: return "family"
-        case .hero(let hero): return "hero-\(hero.id)"
-        case .familyReward: return "family-reward"
-        }
-    }
-}
-
 private struct ParentAccountSettingsView: View {
     @ObservedObject var authStore: AuthStore
-
-    @State private var isPresentingDeleteAccount = false
 
     var body: some View {
         Form {
@@ -409,8 +403,8 @@ private struct ParentAccountSettingsView: View {
             }
 
             Section {
-                Button(role: .destructive) {
-                    isPresentingDeleteAccount = true
+                NavigationLink {
+                    DeleteAccountView(authStore: authStore)
                 } label: {
                     accountRow(
                         title: "Delete Account",
@@ -418,7 +412,6 @@ private struct ParentAccountSettingsView: View {
                         icon: "trash.fill"
                     )
                 }
-                .buttonStyle(.plain)
             } header: {
                 Text("Account Data")
             } footer: {
@@ -436,9 +429,6 @@ private struct ParentAccountSettingsView: View {
         }
         .navigationTitle("Parent Account")
         .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $isPresentingDeleteAccount) {
-            DeleteAccountView(authStore: authStore)
-        }
     }
 
     private func accountRow(title: String, subtitle: String, icon: String) -> some View {
@@ -650,77 +640,69 @@ private struct DeleteAccountView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Label {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("This cannot be undone")
-                                .font(.custom("Quicksand", size: 17).weight(.bold))
-                                .foregroundStyle(ChoreQuestColors.error)
-
-                            Text("Deleting the parent account permanently removes family profiles, quests, rewards, contribution history, submissions, and proof photos.")
-                                .font(.custom("Quicksand", size: 13).weight(.medium))
-                                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                        }
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill")
+        Form {
+            Section {
+                Label {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("This cannot be undone")
+                            .font(.custom("Quicksand", size: 17).weight(.bold))
                             .foregroundStyle(ChoreQuestColors.error)
-                    }
-                }
 
-                Section("Verify Parent Account") {
-                    if authStore.usesPasswordAuthentication {
-                        SecureField("Account password", text: $password)
-                            .textContentType(.password)
-                    } else {
-                        Label(
-                            "For security, you may need to sign in with Apple or Google again before deleting.",
-                            systemImage: "person.badge.key.fill"
-                        )
-                        .font(.custom("Quicksand", size: 13).weight(.medium))
-                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                        Text("Deleting the parent account permanently removes family profiles, quests, rewards, contribution history, submissions, and proof photos.")
+                            .font(.custom("Quicksand", size: 13).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                     }
-
-                    TextField("Type DELETE to confirm", text: $confirmationText)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                }
-
-                if let errorMessage = authStore.errorMessage {
-                    Section {
-                        ErrorBanner(message: errorMessage)
-                    }
-                }
-
-                Section {
-                    Button(role: .destructive) {
-                        deleteAccount()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if authStore.isLoading {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
-                            Text(authStore.isLoading ? "Deleting Account..." : "Permanently Delete Account")
-                                .fontWeight(.bold)
-                            Spacer()
-                        }
-                    }
-                    .disabled(!canDelete)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(ChoreQuestColors.error)
                 }
             }
-            .navigationTitle("Delete Account")
-            .navigationBarTitleDisplayMode(.large)
-            .interactiveDismissDisabled(authStore.isLoading)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(authStore.isLoading)
+
+            Section("Verify Parent Account") {
+                if authStore.usesPasswordAuthentication {
+                    SecureField("Account password", text: $password)
+                        .textContentType(.password)
+                } else {
+                    Label(
+                        "For security, you may need to sign in with Apple or Google again before deleting.",
+                        systemImage: "person.badge.key.fill"
+                    )
+                    .font(.custom("Quicksand", size: 13).weight(.medium))
+                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                 }
+
+                TextField("Type DELETE to confirm", text: $confirmationText)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+            }
+
+            if let errorMessage = authStore.errorMessage {
+                Section {
+                    ErrorBanner(message: errorMessage)
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    deleteAccount()
+                } label: {
+                    HStack {
+                        Spacer()
+                        if authStore.isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(authStore.isLoading ? "Deleting Account..." : "Permanently Delete Account")
+                            .fontWeight(.bold)
+                        Spacer()
+                    }
+                }
+                .disabled(!canDelete)
             }
         }
+        .navigationTitle("Delete Account")
+        .navigationBarTitleDisplayMode(.large)
+        .interactiveDismissDisabled(authStore.isLoading)
     }
 
     private func deleteAccount() {

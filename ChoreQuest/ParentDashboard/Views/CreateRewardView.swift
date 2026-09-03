@@ -38,7 +38,7 @@ struct CreateRewardView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
             }
         }

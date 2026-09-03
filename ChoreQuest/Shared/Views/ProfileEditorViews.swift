@@ -12,6 +12,7 @@ struct FamilyProfileEditorView: View {
     let isSaving: Bool
     let onSave: (String, String, Data?) async -> Bool
     let onAddHero: (String, AvatarOption, Data?) async -> Bool
+    private let usesNavigationStack: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var familyName: String
@@ -22,11 +23,13 @@ struct FamilyProfileEditorView: View {
     init(
         familyProfile: FamilyProfile,
         isSaving: Bool,
+        usesNavigationStack: Bool = true,
         onSave: @escaping (String, String, Data?) async -> Bool,
         onAddHero: @escaping (String, AvatarOption, Data?) async -> Bool
     ) {
         self.familyProfile = familyProfile
         self.isSaving = isSaving
+        self.usesNavigationStack = usesNavigationStack
         self.onSave = onSave
         self.onAddHero = onAddHero
         _familyName = State(initialValue: familyProfile.familyName)
@@ -35,141 +38,152 @@ struct FamilyProfileEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                ChoreQuestColors.background.ignoresSafeArea()
-                QuestBackground()
+        Group {
+            if usesNavigationStack {
+                NavigationStack {
+                    content
+                }
+            } else {
+                content
+            }
+        }
+        .sheet(isPresented: $isPresentingAddHero) {
+            AddHeroProfileView(isSaving: isSaving) { name, avatar, imageData in
+                await onAddHero(name, avatar, imageData)
+            }
+        }
+    }
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        ParentSurfaceCard {
-                            VStack(alignment: .leading, spacing: 18) {
-                                Text("Family Profile")
+    private var content: some View {
+        ZStack {
+            ChoreQuestColors.background.ignoresSafeArea()
+            QuestBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("Family Profile")
+                                .font(.custom("Quicksand", size: 24).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
+
+                            QuestTextField(
+                                title: "FAMILY NAME",
+                                placeholder: "The Smith Squad",
+                                systemImage: "person.3.fill",
+                                text: $familyName,
+                                keyboardType: .default,
+                                contentType: .organizationName
+                            )
+
+                            QuestImagePickerCard(
+                                title: "Parent Avatar",
+                                subtitle: "Update the parent profile image used across the dashboard.",
+                                fallbackSystemImage: "person.crop.circle.fill",
+                                accentColor: ChoreQuestColors.primary,
+                                imageData: $parentImageData
+                            )
+
+                            LocalAvatarPickerSection(
+                                title: "Choose a Parent Avatar",
+                                options: LocalAvatarOption.parents,
+                                selectedImageData: $parentImageData
+                            )
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                Label("Family Crest", systemImage: "shield.fill")
+                                    .font(.custom("Quicksand", size: 18).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.onSurface)
+
+                                CrestPicker(crestName: $crestName)
+                            }
+                        }
+                    }
+
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Kids")
                                     .font(.custom("Quicksand", size: 24).weight(.bold))
                                     .foregroundStyle(ChoreQuestColors.onSurface)
 
-                                QuestTextField(
-                                    title: "FAMILY NAME",
-                                    placeholder: "The Smith Squad",
-                                    systemImage: "person.3.fill",
-                                    text: $familyName,
-                                    keyboardType: .default,
-                                    contentType: .organizationName
-                                )
+                                Spacer()
 
-                                QuestImagePickerCard(
-                                    title: "Parent Avatar",
-                                    subtitle: "Update the parent profile image used across the dashboard.",
-                                    fallbackSystemImage: "person.crop.circle.fill",
-                                    accentColor: ChoreQuestColors.primary,
-                                    imageData: $parentImageData
-                                )
-
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Label("Family Crest", systemImage: "shield.fill")
-                                        .font(.custom("Quicksand", size: 18).weight(.bold))
-                                        .foregroundStyle(ChoreQuestColors.onSurface)
-
-                                    CrestPicker(crestName: $crestName)
+                                Button("Add Kid") {
+                                    isPresentingAddHero = true
                                 }
+                                .font(.custom("Quicksand", size: 14).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.primary)
+                                .disabled(isSaving)
                             }
-                        }
 
-                        ParentSurfaceCard {
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack {
-                                    Text("Kids")
-                                        .font(.custom("Quicksand", size: 24).weight(.bold))
-                                        .foregroundStyle(ChoreQuestColors.onSurface)
+                            if familyProfile.heroes.isEmpty {
+                                Text("No kids added yet.")
+                                    .font(.custom("Quicksand", size: 14).weight(.medium))
+                                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                            } else {
+                                VStack(spacing: 12) {
+                                    ForEach(familyProfile.heroes) { hero in
+                                        HStack(spacing: 12) {
+                                            QuestProfileAvatar(
+                                                imageBase64: hero.imageBase64,
+                                                fallbackIconName: hero.avatarIconName,
+                                                fallbackColorHex: hero.avatarColorHex,
+                                                size: 46,
+                                                borderColor: ChoreQuestColors.primaryFixed
+                                            )
 
-                                    Spacer()
-
-                                    Button("Add Kid") {
-                                        isPresentingAddHero = true
-                                    }
-                                    .font(.custom("Quicksand", size: 14).weight(.bold))
-                                    .foregroundStyle(ChoreQuestColors.primary)
-                                    .disabled(isSaving)
-                                }
-
-                                if familyProfile.heroes.isEmpty {
-                                    Text("No kids added yet.")
-                                        .font(.custom("Quicksand", size: 14).weight(.medium))
-                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                                } else {
-                                    VStack(spacing: 12) {
-                                        ForEach(familyProfile.heroes) { hero in
-                                            HStack(spacing: 12) {
-                                                QuestProfileAvatar(
-                                                    imageBase64: hero.imageBase64,
-                                                    fallbackIconName: hero.avatarIconName,
-                                                    fallbackColorHex: hero.avatarColorHex,
-                                                    size: 46,
-                                                    borderColor: ChoreQuestColors.primaryFixed
-                                                )
-
-                                                VStack(alignment: .leading, spacing: 3) {
-                                                    Text(hero.name)
-                                                        .font(.custom("Quicksand", size: 16).weight(.bold))
-                                                        .foregroundStyle(ChoreQuestColors.onSurface)
-                                                    Text(hero.heroTitle)
-                                                        .font(.custom("Quicksand", size: 12).weight(.medium))
-                                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-                                                }
-
-                                                Spacer()
-
-                                                Text(hero.avatarName)
-                                                    .font(.custom("Quicksand", size: 11).weight(.bold))
-                                                    .padding(.horizontal, 10)
-                                                    .padding(.vertical, 6)
-                                                    .background(ChoreQuestColors.surfaceContainerLow)
-                                                    .foregroundStyle(ChoreQuestColors.primary)
-                                                    .clipShape(Capsule())
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(hero.name)
+                                                    .font(.custom("Quicksand", size: 16).weight(.bold))
+                                                    .foregroundStyle(ChoreQuestColors.onSurface)
+                                                Text(hero.heroTitle)
+                                                    .font(.custom("Quicksand", size: 12).weight(.medium))
+                                                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
                                             }
+
+                                            Spacer()
+
+                                            Text(hero.avatarName)
+                                                .font(.custom("Quicksand", size: 11).weight(.bold))
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 6)
+                                                .background(ChoreQuestColors.surfaceContainerLow)
+                                                .foregroundStyle(ChoreQuestColors.primary)
+                                                .clipShape(Capsule())
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    .padding(20)
                 }
-            }
-            .navigationTitle("Edit Family")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                        .disabled(isSaving)
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task {
-                            let didSave = await onSave(
-                                familyName.trimmingCharacters(in: .whitespacesAndNewlines),
-                                crestName,
-                                parentImageData
-                            )
-                            if didSave { dismiss() }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if isSaving {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
-                            Text(isSaving ? "Saving..." : "Save")
-                        }
-                    }
-                    .disabled(familyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
-                }
+                .padding(20)
             }
         }
-        .sheet(isPresented: $isPresentingAddHero) {
-            AddHeroProfileView(isSaving: isSaving) { name, avatar, imageData in
-                await onAddHero(name, avatar, imageData)
+        .navigationTitle("Edit Family")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task {
+                        let didSave = await onSave(
+                            familyName.trimmingCharacters(in: .whitespacesAndNewlines),
+                            crestName,
+                            parentImageData
+                        )
+                        if didSave { dismiss() }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isSaving {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isSaving ? "Saving..." : "Save")
+                    }
+                }
+                .disabled(familyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
             }
         }
     }
@@ -179,6 +193,7 @@ struct HeroProfileEditorView: View {
     let hero: HeroProfile
     let isSaving: Bool
     let onSave: (String, AvatarOption, Data?) async -> Bool
+    private let usesNavigationStack: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var heroName: String
@@ -188,10 +203,12 @@ struct HeroProfileEditorView: View {
     init(
         hero: HeroProfile,
         isSaving: Bool,
+        usesNavigationStack: Bool = true,
         onSave: @escaping (String, AvatarOption, Data?) async -> Bool
     ) {
         self.hero = hero
         self.isSaving = isSaving
+        self.usesNavigationStack = usesNavigationStack
         self.onSave = onSave
         _heroName = State(initialValue: hero.name)
         _selectedAvatar = State(initialValue: AvatarOption.avatar(for: hero.avatarID))
@@ -199,82 +216,89 @@ struct HeroProfileEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                ChoreQuestColors.background.ignoresSafeArea()
-                QuestBackground()
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        ParentSurfaceCard {
-                            VStack(alignment: .leading, spacing: 18) {
-                                HStack(spacing: 14) {
-                                    HeroAvatarPreview(imageData: imageData, avatar: selectedAvatar, size: 72)
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(hero.heroTitle)
-                                            .font(.custom("Quicksand", size: 12).weight(.bold))
-                                            .foregroundStyle(ChoreQuestColors.primary)
-
-                                        Text("Hero Profile")
-                                            .font(.custom("Quicksand", size: 24).weight(.bold))
-                                            .foregroundStyle(ChoreQuestColors.onSurface)
-                                    }
-                                }
-
-                                QuestTextField(
-                                    title: "HERO NAME",
-                                    placeholder: "Captain Clean-Up",
-                                    systemImage: "face.smiling.fill",
-                                    text: $heroName,
-                                    keyboardType: .default,
-                                    contentType: .nickname
-                                )
-
-                                AvatarTokenPickerSection(title: "Animal Token", selectedAvatar: $selectedAvatar)
-
-                                QuestImagePickerCard(
-                                    title: "Hero Photo",
-                                    subtitle: "You can keep a real profile photo or just use the animal token.",
-                                    fallbackSystemImage: "person.crop.circle.fill",
-                                    accentColor: ChoreQuestColors.primary,
-                                    imageData: $imageData
-                                )
-                            }
-                        }
-                    }
-                    .padding(20)
-                }
+        if usesNavigationStack {
+            NavigationStack {
+                content
             }
-            .navigationTitle("Edit Hero")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                        .disabled(isSaving)
-                }
+        } else {
+            content
+        }
+    }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task {
-                            let didSave = await onSave(
-                                heroName.trimmingCharacters(in: .whitespacesAndNewlines),
-                                selectedAvatar,
-                                imageData
-                            )
-                            if didSave { dismiss() }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if isSaving {
-                                ProgressView()
-                                    .controlSize(.small)
+    private var content: some View {
+        ZStack {
+            ChoreQuestColors.background.ignoresSafeArea()
+            QuestBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 18) {
+                            HStack(spacing: 14) {
+                                HeroAvatarPreview(imageData: imageData, avatar: selectedAvatar, size: 72)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(hero.heroTitle)
+                                        .font(.custom("Quicksand", size: 12).weight(.bold))
+                                        .foregroundStyle(ChoreQuestColors.primary)
+
+                                    Text("Hero Profile")
+                                        .font(.custom("Quicksand", size: 24).weight(.bold))
+                                        .foregroundStyle(ChoreQuestColors.onSurface)
+                                }
                             }
-                            Text(isSaving ? "Saving..." : "Save")
+
+                            QuestTextField(
+                                title: "HERO NAME",
+                                placeholder: "Captain Clean-Up",
+                                systemImage: "face.smiling.fill",
+                                text: $heroName,
+                                keyboardType: .default,
+                                contentType: .nickname
+                            )
+
+                            AvatarTokenPickerSection(
+                                title: "Kid Avatar",
+                                selectedAvatar: $selectedAvatar,
+                                selectedImageData: $imageData
+                            )
+
+                            QuestImagePickerCard(
+                                title: "Hero Photo",
+                                subtitle: "You can keep a real profile photo or use the selected avatar.",
+                                fallbackSystemImage: "person.crop.circle.fill",
+                                accentColor: ChoreQuestColors.primary,
+                                imageData: $imageData
+                            )
                         }
                     }
-                    .disabled(heroName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
+                .padding(20)
+            }
+        }
+        .navigationTitle("Edit Hero")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task {
+                        let didSave = await onSave(
+                            heroName.trimmingCharacters(in: .whitespacesAndNewlines),
+                            selectedAvatar,
+                            imageData
+                        )
+                        if didSave { dismiss() }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isSaving {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isSaving ? "Saving..." : "Save")
+                    }
+                }
+                .disabled(heroName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
             }
         }
     }
@@ -292,6 +316,7 @@ struct FamilyRewardEditorView: View {
     let isSaving: Bool
     let onSave: (String, Int) async -> Bool
     let onDelete: (() async -> Bool)?
+    private let usesNavigationStack: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var title: String
@@ -300,11 +325,13 @@ struct FamilyRewardEditorView: View {
     init(
         currentReward: FamilyGoalReward?,
         isSaving: Bool,
+        usesNavigationStack: Bool = true,
         onSave: @escaping (String, Int) async -> Bool,
         onDelete: (() async -> Bool)? = nil
     ) {
         self.currentReward = currentReward
         self.isSaving = isSaving
+        self.usesNavigationStack = usesNavigationStack
         self.onSave = onSave
         self.onDelete = onDelete
         _title = State(initialValue: currentReward?.title ?? "")
@@ -312,98 +339,101 @@ struct FamilyRewardEditorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                ChoreQuestColors.background.ignoresSafeArea()
-                QuestBackground()
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        ParentSurfaceCard {
-                            VStack(alignment: .leading, spacing: 18) {
-                                Text("Family-Wide Reward")
-                                    .font(.custom("Quicksand", size: 24).weight(.bold))
-                                    .foregroundStyle(ChoreQuestColors.onSurface)
-
-                                QuestTextField(
-                                    title: "REWARD TITLE",
-                                    placeholder: "Pizza Night",
-                                    systemImage: "party.popper.fill",
-                                    text: $title,
-                                    keyboardType: .default,
-                                    contentType: .nickname
-                                )
-
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("TEAM GOAL")
-                                        .font(.custom("Quicksand", size: 12).weight(.bold))
-                                        .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
-
-                                    HStack {
-                                        Slider(value: $goalXP, in: 100...5000, step: 50)
-                                            .tint(ChoreQuestColors.primary)
-
-                                        Text("\(Int(goalXP)) XP")
-                                            .font(.custom("Quicksand", size: 14).weight(.bold))
-                                            .foregroundStyle(ChoreQuestColors.primary)
-                                    }
-                                }
-
-                                if onDelete != nil, currentReward != nil {
-                                    Button(role: .destructive) {
-                                        Task {
-                                            let didDelete = await onDelete?() ?? false
-                                            if didDelete { dismiss() }
-                                        }
-                                    } label: {
-                                        HStack(spacing: 6) {
-                                            if isSaving {
-                                                ProgressView()
-                                                    .controlSize(.small)
-                                            } else {
-                                                Image(systemName: "trash")
-                                            }
-                                            Text(isSaving ? "Removing..." : "Delete Family Reward")
-                                        }
-                                        .frame(maxWidth: .infinity)
-                                    }
-                                    .buttonStyle(ParentOutlinePillStyle())
-                                    .disabled(isSaving)
-                                }
-                            }
-                        }
-                    }
-                    .padding(20)
-                }
+        if usesNavigationStack {
+            NavigationStack {
+                content
             }
-            .navigationTitle(currentReward == nil ? "Create Family Reward" : "Edit Family Reward")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                        .disabled(isSaving)
-                }
+        } else {
+            content
+        }
+    }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task {
-                            let didSave = await onSave(
-                                title.trimmingCharacters(in: .whitespacesAndNewlines),
-                                Int(goalXP)
+    private var content: some View {
+        ZStack {
+            ChoreQuestColors.background.ignoresSafeArea()
+            QuestBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    ParentSurfaceCard {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("Family-Wide Reward")
+                                .font(.custom("Quicksand", size: 24).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurface)
+
+                            QuestTextField(
+                                title: "REWARD TITLE",
+                                placeholder: "Pizza Night",
+                                systemImage: "party.popper.fill",
+                                text: $title,
+                                keyboardType: .default,
+                                contentType: .nickname
                             )
-                            if didSave { dismiss() }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if isSaving {
-                                ProgressView()
-                                    .controlSize(.small)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("TEAM GOAL")
+                                    .font(.custom("Quicksand", size: 12).weight(.bold))
+                                    .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+                                HStack {
+                                    Slider(value: $goalXP, in: 100...5000, step: 50)
+                                        .tint(ChoreQuestColors.primary)
+
+                                    Text("\(Int(goalXP)) XP")
+                                        .font(.custom("Quicksand", size: 14).weight(.bold))
+                                        .foregroundStyle(ChoreQuestColors.primary)
+                                }
                             }
-                            Text(isSaving ? "Saving..." : "Save")
+
+                            if onDelete != nil, currentReward != nil {
+                                Button(role: .destructive) {
+                                    Task {
+                                        let didDelete = await onDelete?() ?? false
+                                        if didDelete { dismiss() }
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if isSaving {
+                                            ProgressView()
+                                                .controlSize(.small)
+                                        } else {
+                                            Image(systemName: "trash")
+                                        }
+                                        Text(isSaving ? "Removing..." : "Delete Family Reward")
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(ParentOutlinePillStyle())
+                                .disabled(isSaving)
+                            }
                         }
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
+                .padding(20)
+            }
+        }
+        .navigationTitle(currentReward == nil ? "Create Family Reward" : "Edit Family Reward")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task {
+                        let didSave = await onSave(
+                            title.trimmingCharacters(in: .whitespacesAndNewlines),
+                            Int(goalXP)
+                        )
+                        if didSave { dismiss() }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isSaving {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(isSaving ? "Saving..." : "Save")
+                    }
+                }
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
             }
         }
     }
@@ -441,7 +471,11 @@ struct AddHeroProfileView: View {
                                     contentType: .nickname
                                 )
 
-                                AvatarTokenPickerSection(title: "Animal Token", selectedAvatar: $selectedAvatar)
+                                AvatarTokenPickerSection(
+                                    title: "Kid Avatar",
+                                    selectedAvatar: $selectedAvatar,
+                                    selectedImageData: $imageData
+                                )
 
                                 QuestImagePickerCard(
                                     title: "Kid Photo",
@@ -460,7 +494,7 @@ struct AddHeroProfileView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
+                    Button("Cancel") { dismiss() }
                         .disabled(isSaving)
                 }
 

@@ -82,6 +82,7 @@ struct CreateQuestView: View {
                     }
                     .foregroundStyle(ChoreQuestColors.primary)
                 }
+                .sharedBackgroundVisibility(.hidden)
 
                 ToolbarItem(placement: .topBarTrailing) {
                     QuestProfileAvatar(
@@ -92,6 +93,7 @@ struct CreateQuestView: View {
                         borderColor: ChoreQuestColors.primaryFixed
                     )
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
             .safeAreaInset(edge: .bottom) {
                 Button(action: saveQuest) {

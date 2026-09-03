@@ -51,7 +51,7 @@ struct KidQuestSubmissionView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Close") {
+                Button("Cancel") {
                     dismiss()
                 }
             }
@@ -65,6 +65,7 @@ struct KidQuestSubmissionView: View {
                     borderColor: ChoreQuestColors.primaryFixed
                 )
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .fullScreenCover(item: $sourceType) { source in
             CameraLibraryImagePicker(sourceType: source, processingPurpose: .proof) { data in

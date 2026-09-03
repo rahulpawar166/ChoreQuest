@@ -125,8 +125,6 @@ struct ParentDashboardView: View {
                 ParentDashboardEmptyState(authStore: authStore)
             }
         }
-        .navigationTitle(selectedTab.navigationTitle)
-        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if let snapshot {
                 ToolbarItem(placement: .topBarLeading) {
@@ -143,6 +141,7 @@ struct ParentDashboardView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -166,6 +165,7 @@ struct ParentDashboardView: View {
                     }
                 }
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .task(id: questLoadKey) {
             guard let familyProfile = authStore.familyProfile else {
@@ -289,32 +289,34 @@ struct ParentDashboardView: View {
 
     @ViewBuilder
     private func dashboardTabContent(snapshot: ParentDashboardSnapshot, tab: ParentDashboardTab) -> some View {
-        ZStack {
-            ChoreQuestColors.background
-                .ignoresSafeArea()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                header(snapshot: snapshot)
 
-            QuestBackground()
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    header(snapshot: snapshot)
-
-                    switch tab {
-                    case .quests:
-                        questsTab(snapshot: snapshot)
-                    case .approvals:
-                        approvalsTab(snapshot: snapshot)
-                    case .heroes:
-                        heroesTab(snapshot: snapshot)
-                    case .settings:
-                        EmptyView()
-                    }
+                switch tab {
+                case .quests:
+                    questsTab(snapshot: snapshot)
+                case .approvals:
+                    approvalsTab(snapshot: snapshot)
+                case .heroes:
+                    heroesTab(snapshot: snapshot)
+                case .settings:
+                    EmptyView()
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, tab == .quests ? 170 : 120)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, tab == .quests ? 170 : 120)
         }
+        .background {
+            ZStack {
+                ChoreQuestColors.background
+                QuestBackground()
+            }
+            .ignoresSafeArea()
+        }
+        .navigationTitle(tab.navigationTitle)
+        .navigationBarTitleDisplayMode(.large)
     }
 
     @ViewBuilder
@@ -865,7 +867,7 @@ private struct ParentQuestDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Close") {
+                Button("Cancel") {
                     dismiss()
                 }
                 .disabled(isSaving || isDeleting)
