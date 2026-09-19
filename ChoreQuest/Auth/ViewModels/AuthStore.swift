@@ -24,10 +24,12 @@ final class AuthStore: ObservableObject {
     @Published private(set) var currentUserID: String?
     @Published private(set) var userProfile: UserProfile?
     @Published private(set) var familyProfile: FamilyProfile?
+    @Published private(set) var isProfilePINSet = false
 
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private var currentAppleNonce: String?
     private let sessionService = FirestoreSessionService()
+    private let profilePINService = ProfilePINService()
 
     var usesPasswordAuthentication: Bool {
         Auth.auth().currentUser?.providerData.contains { $0.providerID == "password" } == true
@@ -186,6 +188,7 @@ final class AuthStore: ObservableObject {
                 userID: userID,
                 familyID: familyProfile?.id ?? userProfile?.familyID
             )
+            try? profilePINService.removePIN(for: userID)
             try await user.deleteAccountAsync()
             clearSessionState()
             return true
@@ -293,6 +296,47 @@ final class AuthStore: ObservableObject {
         }
 
         setLoading(false)
+    }
+
+    func setProfilePIN(_ pin: String) -> Bool {
+        guard let currentUserID else {
+            errorMessage = "Sign in before setting a profile PIN."
+            return false
+        }
+
+        do {
+            try profilePINService.setPIN(pin, for: currentUserID)
+            isProfilePINSet = true
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func verifyProfilePIN(_ pin: String) -> Bool {
+        guard let currentUserID else {
+            return false
+        }
+        return profilePINService.verify(pin, for: currentUserID)
+    }
+
+    func removeProfilePIN() -> Bool {
+        guard let currentUserID else {
+            errorMessage = "Sign in before changing the profile PIN."
+            return false
+        }
+
+        do {
+            try profilePINService.removePIN(for: currentUserID)
+            isProfilePINSet = false
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 
     func completeAppTour() async -> Bool {
@@ -426,6 +470,7 @@ final class AuthStore: ObservableObject {
         currentUserID = snapshot.userProfile.userID
         userProfile = snapshot.userProfile
         familyProfile = snapshot.familyProfile
+        refreshProfilePINState(for: snapshot.userProfile.userID)
         route = route(for: snapshot.userProfile, familyProfile: snapshot.familyProfile)
     }
 
@@ -596,8 +641,17 @@ final class AuthStore: ObservableObject {
         currentUserID = nil
         userProfile = nil
         familyProfile = nil
+        isProfilePINSet = false
         route = .auth
         errorMessage = nil
+    }
+
+    private func refreshProfilePINState(for userID: String?) {
+        guard let userID else {
+            isProfilePINSet = false
+            return
+        }
+        isProfilePINSet = profilePINService.hasPIN(for: userID)
     }
 
     private func friendlyMessage(for error: Error) -> String {

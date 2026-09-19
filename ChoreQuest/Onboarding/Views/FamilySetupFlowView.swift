@@ -65,11 +65,19 @@ struct FamilySetupFlowView: View {
                 onBack: { step = .familyIdentity },
                 isSaving: authStore.isLoading,
                 onComplete: {
+                    step = .profilePIN
+                },
+                onSignOut: authStore.signOut
+            )
+        case .profilePIN:
+            ProfilePINOnboardingView(
+                authStore: authStore,
+                onBack: { step = .heroSetup },
+                onComplete: {
                     Task {
                         await authStore.completeOnboarding(with: draft)
                     }
-                },
-                onSignOut: authStore.signOut
+                }
             )
         }
     }
@@ -78,4 +86,5 @@ struct FamilySetupFlowView: View {
 private enum OnboardingStep {
     case familyIdentity
     case heroSetup
+    case profilePIN
 }

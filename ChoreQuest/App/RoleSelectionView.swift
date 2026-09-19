@@ -9,6 +9,7 @@ import SwiftUI
 
 struct RoleSelectionView: View {
     @ObservedObject var authStore: AuthStore
+    @State private var isPresentingParentPIN = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -39,6 +40,23 @@ struct RoleSelectionView: View {
             }
         }
         .questToast(message: $authStore.errorMessage)
+        .sheet(isPresented: $isPresentingParentPIN) {
+            ProfilePINPromptView(
+                title: "Parent PIN",
+                message: "Enter the local profile PIN to open parent tools on this device.",
+                isVerifying: authStore.isLoading,
+                onCancel: { isPresentingParentPIN = false }
+            ) { pin in
+                guard authStore.verifyProfilePIN(pin) else {
+                    return false
+                }
+                isPresentingParentPIN = false
+                Task {
+                    await authStore.selectRole(.parent)
+                }
+                return true
+            }
+        }
     }
 
     private var mascotHeader: some View {
@@ -109,6 +127,11 @@ struct RoleSelectionView: View {
     }
 
     private func selectRole(_ role: AppRole) {
+        if role == .parent, authStore.isProfilePINSet {
+            isPresentingParentPIN = true
+            return
+        }
+
         Task {
             await authStore.selectRole(role)
         }

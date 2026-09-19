@@ -18,6 +18,7 @@ struct ChoreQuestSettingsView: View {
     @AppStorage("appHapticsEnabled") private var hapticsEnabled = true
     @State private var isConfirmingRoleSwitch = false
     @State private var isConfirmingSignOut = false
+    @State private var isPresentingRoleSwitchPIN = false
 
     var body: some View {
         Form {
@@ -30,6 +31,7 @@ struct ChoreQuestSettingsView: View {
             }
 
             appExperienceSection
+            profilePINSection
             supportSection
             deviceAndAccountSection
         }
@@ -45,7 +47,7 @@ struct ChoreQuestSettingsView: View {
         .alert("Switch Device Mode?", isPresented: $isConfirmingRoleSwitch) {
             Button("Cancel", role: .cancel) {}
             Button("Switch Mode") {
-                Task { await authStore.clearSelectedRole() }
+                requestRoleSwitch()
             }
         } message: {
             Text("You will return to the Parent or Kid mode selection screen.")
@@ -55,6 +57,21 @@ struct ChoreQuestSettingsView: View {
             Button("Sign Out", role: .destructive, action: authStore.signOut)
         } message: {
             Text("This device will need the family account credentials to sign in again.")
+        }
+        .sheet(isPresented: $isPresentingRoleSwitchPIN) {
+            ProfilePINPromptView(
+                title: "Profile PIN",
+                message: "Enter the local profile PIN before switching profiles on this shared device.",
+                isVerifying: authStore.isLoading,
+                onCancel: { isPresentingRoleSwitchPIN = false }
+            ) { pin in
+                guard authStore.verifyProfilePIN(pin) else {
+                    return false
+                }
+                isPresentingRoleSwitchPIN = false
+                Task { await authStore.clearSelectedRole() }
+                return true
+            }
         }
     }
 
@@ -230,6 +247,44 @@ struct ChoreQuestSettingsView: View {
             .buttonStyle(.plain)
         }
         .listRowBackground(ChoreQuestColors.surfaceContainerLowest)
+    }
+
+    private var profilePINSection: some View {
+        Section("Profile PIN") {
+            if role == .parent {
+                NavigationLink {
+                    ProfilePINSettingsView(authStore: authStore)
+                } label: {
+                    settingsRow(
+                        title: authStore.isProfilePINSet ? "Manage Profile PIN" : "Set Profile PIN",
+                        subtitle: authStore.isProfilePINSet
+                            ? "Parent mode and profile switching are protected on this device."
+                            : "Recommended when parents and kids share this device.",
+                        icon: authStore.isProfilePINSet ? "lock.shield.fill" : "lock.open.fill",
+                        color: ChoreQuestColors.primary
+                    )
+                }
+            } else {
+                settingsRow(
+                    title: authStore.isProfilePINSet ? "Profile PIN Enabled" : "Profile PIN Available",
+                    subtitle: authStore.isProfilePINSet
+                        ? "A parent PIN protects profile switching on this shared device."
+                        : "A parent can turn this on from Parent mode when the device is shared.",
+                    icon: authStore.isProfilePINSet ? "lock.shield.fill" : "lock.badge.clock.fill",
+                    color: ChoreQuestColors.primary
+                )
+            }
+        }
+        .listRowBackground(ChoreQuestColors.surfaceContainerLowest)
+    }
+
+    private func requestRoleSwitch() {
+        guard role == .kid, authStore.isProfilePINSet else {
+            Task { await authStore.clearSelectedRole() }
+            return
+        }
+
+        isPresentingRoleSwitchPIN = true
     }
 
     private var deviceAndAccountSection: some View {
