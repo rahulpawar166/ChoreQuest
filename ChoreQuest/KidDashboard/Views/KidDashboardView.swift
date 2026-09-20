@@ -13,6 +13,9 @@ struct KidDashboardView: View {
     @State private var submissionQuest: FamilyQuest?
     @State private var isPresentingHistory = false
     @State private var selectedHeroForEditing: HeroProfile?
+    @State private var pendingHeroPINUnlock: HeroProfile?
+    @State private var unlockedHeroIDs: Set<String> = []
+    @State private var isPresentingLockedRoleSwitchPIN = false
     @State private var isHeroFloating = false
     @State private var selectedTab: KidDashboardTab = .adventures
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -45,53 +48,63 @@ struct KidDashboardView: View {
 
             if let familyProfile {
                 if let snapshot {
-                    TabView(selection: $selectedTab) {
-                        dashboardTabContent(
-                            .adventures,
-                            snapshot: snapshot,
-                            familyProfile: familyProfile
+                    if isHeroLocked(snapshot.hero) {
+                        HeroPINLockedView(
+                            hero: snapshot.hero,
+                            heroes: snapshot.heroes,
+                            onUnlock: { pendingHeroPINUnlock = snapshot.hero },
+                            onSelectHero: selectHeroFromGate,
+                            onSwitchMode: requestLockedRoleSwitch
                         )
-                        .tag(KidDashboardTab.adventures)
-                        .tabItem {
-                            Label("Adventures", systemImage: "map.fill")
-                        }
+                    } else {
+                        TabView(selection: $selectedTab) {
+                            dashboardTabContent(
+                                .adventures,
+                                snapshot: snapshot,
+                                familyProfile: familyProfile
+                            )
+                            .tag(KidDashboardTab.adventures)
+                            .tabItem {
+                                Label("Adventures", systemImage: "map.fill")
+                            }
 
-                        dashboardTabContent(
-                            .rewards,
-                            snapshot: snapshot,
-                            familyProfile: familyProfile
-                        )
-                        .tag(KidDashboardTab.rewards)
-                        .tabItem {
-                            Label("Rewards", systemImage: "gift.fill")
-                        }
+                            dashboardTabContent(
+                                .rewards,
+                                snapshot: snapshot,
+                                familyProfile: familyProfile
+                            )
+                            .tag(KidDashboardTab.rewards)
+                            .tabItem {
+                                Label("Rewards", systemImage: "gift.fill")
+                            }
 
-                        dashboardTabContent(
-                            .team,
-                            snapshot: snapshot,
-                            familyProfile: familyProfile
-                        )
-                        .tag(KidDashboardTab.team)
-                        .tabItem {
-                            Label("Team", systemImage: "person.3.fill")
-                        }
+                            dashboardTabContent(
+                                .team,
+                                snapshot: snapshot,
+                                familyProfile: familyProfile
+                            )
+                            .tag(KidDashboardTab.team)
+                            .tabItem {
+                                Label("Team", systemImage: "person.3.fill")
+                            }
 
-                        ChoreQuestSettingsView(
-                            authStore: authStore,
-                            role: .kid,
-                            selectedHero: snapshot.hero,
-                            onViewHistory: { isPresentingHistory = true }
-                        )
-                        .tag(KidDashboardTab.settings)
-                        .tabItem {
-                            Label("Settings", systemImage: "gearshape.fill")
+                            ChoreQuestSettingsView(
+                                authStore: authStore,
+                                role: .kid,
+                                selectedHero: snapshot.hero,
+                                onViewHistory: { isPresentingHistory = true }
+                            )
+                            .tag(KidDashboardTab.settings)
+                            .tabItem {
+                                Label("Settings", systemImage: "gearshape.fill")
+                            }
                         }
-                    }
-                    .tint(ChoreQuestColors.primary)
-                    .toolbarBackground(ChoreQuestColors.surfaceContainerLowest, for: .tabBar)
-                    .toolbarBackground(.visible, for: .tabBar)
-                    .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in
-                        hapticsEnabled
+                        .tint(ChoreQuestColors.primary)
+                        .toolbarBackground(ChoreQuestColors.surfaceContainerLowest, for: .tabBar)
+                        .toolbarBackground(.visible, for: .tabBar)
+                        .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in
+                            hapticsEnabled
+                        }
                     }
                 } else {
                     KidDashboardLinkRequiredView(authStore: authStore)
@@ -103,7 +116,7 @@ struct KidDashboardView: View {
         .navigationTitle(selectedTab.navigationTitle)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            if let snapshot {
+            if let snapshot, !isHeroLocked(snapshot.hero) {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         selectedHeroForEditing = snapshot.hero
@@ -122,7 +135,7 @@ struct KidDashboardView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                if snapshot != nil, selectedTab != .settings {
+                if let snapshot, !isHeroLocked(snapshot.hero), selectedTab != .settings {
                     Button {
                         isPresentingHistory = true
                     } label: {
@@ -149,6 +162,7 @@ struct KidDashboardView: View {
         }
         .task(id: questLoadKey) {
             guard let familyProfile, let heroID = snapshot?.hero.id else { return }
+            guard !authStore.isHeroPINSet(heroID: heroID) || unlockedHeroIDs.contains(heroID) else { return }
             await store.loadDashboard(familyID: familyProfile.id, heroID: heroID, heroes: familyProfile.heroes)
         }
         .questToast(message: Binding(
@@ -207,6 +221,71 @@ struct KidDashboardView: View {
                     avatar: avatar,
                     imageData: imageData
                 )
+            }
+        }
+        .sheet(item: $pendingHeroPINUnlock) { hero in
+            ProfilePINPromptView(
+                title: "\(hero.name)'s Hero PIN",
+                message: "Enter the PIN to open this hero's quest board.",
+                isVerifying: authStore.isLoading,
+                actionTitle: "Open Quest Board",
+                forgotTitle: "Forgot Hero PIN?",
+                forgotMessage: "Ask a parent to open Parent mode, go to Hero PINs, and set a new PIN for \(hero.name).",
+                forgotActionRole: nil,
+                showsForgotPIN: true,
+                onCancel: { pendingHeroPINUnlock = nil }
+            ) { pin in
+                guard authStore.verifyHeroPIN(pin, heroID: hero.id) else {
+                    return false
+                }
+                unlockedHeroIDs.insert(hero.id)
+                pendingHeroPINUnlock = nil
+                if authStore.userProfile?.selectedHeroID != hero.id {
+                    Task { await authStore.selectHero(hero.id) }
+                }
+                return true
+            }
+        }
+        .sheet(isPresented: $isPresentingLockedRoleSwitchPIN) {
+            ProfilePINPromptView(
+                title: "Parent Gate",
+                message: "Enter the parent code before switching profiles on this shared device.",
+                isVerifying: authStore.isLoading,
+                onCancel: { isPresentingLockedRoleSwitchPIN = false },
+                onForgotPIN: {
+                    isPresentingLockedRoleSwitchPIN = false
+                    authStore.signOut()
+                }
+            ) { pin in
+                guard authStore.verifyProfilePIN(pin) else {
+                    return false
+                }
+                isPresentingLockedRoleSwitchPIN = false
+                Task { await authStore.clearSelectedRole() }
+                return true
+            }
+        }
+    }
+
+    private func isHeroLocked(_ hero: HeroProfile) -> Bool {
+        authStore.isHeroPINSet(heroID: hero.id) && !unlockedHeroIDs.contains(hero.id)
+    }
+
+    private func requestLockedRoleSwitch() {
+        guard authStore.isProfilePINSet else {
+            Task { await authStore.clearSelectedRole() }
+            return
+        }
+
+        isPresentingLockedRoleSwitchPIN = true
+    }
+
+    private func selectHeroFromGate(_ hero: HeroProfile) {
+        if authStore.isHeroPINSet(heroID: hero.id), !unlockedHeroIDs.contains(hero.id) {
+            pendingHeroPINUnlock = hero
+        } else {
+            Task {
+                await authStore.selectHero(hero.id)
             }
         }
     }
@@ -349,8 +428,12 @@ struct KidDashboardView: View {
             HStack(spacing: 12) {
                 ForEach(snapshot.heroes) { hero in
                     Button(action: {
-                        Task {
-                            await authStore.selectHero(hero.id)
+                        if authStore.isHeroPINSet(heroID: hero.id), !unlockedHeroIDs.contains(hero.id) {
+                            pendingHeroPINUnlock = hero
+                        } else {
+                            Task {
+                                await authStore.selectHero(hero.id)
+                            }
                         }
                     }) {
                         HStack(spacing: 10) {
@@ -1165,5 +1248,103 @@ private struct KidDashboardLinkRequiredView: View {
             .buttonStyle(QuestPrimaryButtonStyle())
         }
         .padding(24)
+    }
+}
+
+private struct HeroPINLockedView: View {
+    let hero: HeroProfile
+    let heroes: [HeroProfile]
+    let onUnlock: () -> Void
+    let onSelectHero: (HeroProfile) -> Void
+    let onSwitchMode: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer(minLength: 24)
+
+            ParentSurfaceCard {
+                VStack(spacing: 18) {
+                    QuestProfileAvatar(
+                        imageBase64: hero.imageBase64,
+                        fallbackIconName: hero.avatarIconName,
+                        fallbackColorHex: hero.avatarColorHex,
+                        size: 86,
+                        borderColor: ChoreQuestColors.secondary
+                    )
+
+                    VStack(spacing: 8) {
+                        Text("\(hero.name)'s quest board is locked")
+                            .font(.custom("Quicksand", size: 24).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.onSurface)
+                            .multilineTextAlignment(.center)
+
+                        Text("Enter this hero's PIN to continue. If the PIN is forgotten, a parent can reset it from Parent mode.")
+                            .font(.custom("Quicksand", size: 15).weight(.medium))
+                            .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Button {
+                        onUnlock()
+                    } label: {
+                        Label("Enter Hero PIN", systemImage: "lock.open.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(QuestPrimaryButtonStyle())
+
+                    if heroes.count > 1 {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Choose another hero")
+                                .font(.custom("Quicksand", size: 13).weight(.bold))
+                                .foregroundStyle(ChoreQuestColors.onSurfaceVariant)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(heroes) { option in
+                                        Button {
+                                            onSelectHero(option)
+                                        } label: {
+                                            HStack(spacing: 8) {
+                                                QuestProfileAvatar(
+                                                    imageBase64: option.imageBase64,
+                                                    fallbackIconName: option.avatarIconName,
+                                                    fallbackColorHex: option.avatarColorHex,
+                                                    size: 34,
+                                                    borderColor: option.id == hero.id ? ChoreQuestColors.secondary : ChoreQuestColors.surfaceContainerHigh
+                                                )
+
+                                                Text(option.name)
+                                                    .font(.custom("Quicksand", size: 12).weight(.bold))
+                                                    .foregroundStyle(option.id == hero.id ? ChoreQuestColors.primary : ChoreQuestColors.onSurfaceVariant)
+                                            }
+                                            .padding(.horizontal, 11)
+                                            .padding(.vertical, 8)
+                                            .background(option.id == hero.id ? ChoreQuestColors.surfaceContainerLow : ChoreQuestColors.surfaceContainerLowest)
+                                            .clipShape(Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        onSwitchMode()
+                    } label: {
+                        Text("Switch Device Mode")
+                            .font(.custom("Quicksand", size: 16).weight(.bold))
+                            .foregroundStyle(ChoreQuestColors.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 8)
+            }
+            .padding(.horizontal, 20)
+
+            Spacer(minLength: 24)
+        }
     }
 }

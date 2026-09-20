@@ -42,10 +42,14 @@ struct RoleSelectionView: View {
         .questToast(message: $authStore.errorMessage)
         .sheet(isPresented: $isPresentingParentPIN) {
             ProfilePINPromptView(
-                title: "Parent PIN",
-                message: "Enter the local profile PIN to open parent tools on this device.",
+                title: "Parent Gate",
+                message: "Enter the code to open parent tools on this device.",
                 isVerifying: authStore.isLoading,
-                onCancel: { isPresentingParentPIN = false }
+                onCancel: { isPresentingParentPIN = false },
+                onForgotPIN: {
+                    isPresentingParentPIN = false
+                    authStore.signOut()
+                }
             ) { pin in
                 guard authStore.verifyProfilePIN(pin) else {
                     return false

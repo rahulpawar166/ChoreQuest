@@ -25,6 +25,7 @@ final class AuthStore: ObservableObject {
     @Published private(set) var userProfile: UserProfile?
     @Published private(set) var familyProfile: FamilyProfile?
     @Published private(set) var isProfilePINSet = false
+    @Published private(set) var heroPINStates: [String: Bool] = [:]
 
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private var currentAppleNonce: String?
@@ -150,6 +151,9 @@ final class AuthStore: ObservableObject {
 
     func signOut() {
         do {
+            if let currentUserID {
+                try? profilePINService.removePIN(for: currentUserID)
+            }
             try Auth.auth().signOut()
             GIDSignIn.sharedInstance.signOut()
             clearSessionState()
@@ -189,6 +193,7 @@ final class AuthStore: ObservableObject {
                 familyID: familyProfile?.id ?? userProfile?.familyID
             )
             try? profilePINService.removePIN(for: userID)
+            removeAllHeroPINs(for: userID)
             try await user.deleteAccountAsync()
             clearSessionState()
             return true
@@ -339,6 +344,51 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    func isHeroPINSet(heroID: String) -> Bool {
+        heroPINStates[heroID] == true
+    }
+
+    func setHeroPIN(_ pin: String, heroID: String) -> Bool {
+        guard let currentUserID else {
+            errorMessage = "Sign in before setting a Hero PIN."
+            return false
+        }
+
+        do {
+            try profilePINService.setHeroPIN(pin, for: currentUserID, heroID: heroID)
+            heroPINStates[heroID] = true
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func verifyHeroPIN(_ pin: String, heroID: String) -> Bool {
+        guard let currentUserID else {
+            return false
+        }
+        return profilePINService.verifyHeroPIN(pin, for: currentUserID, heroID: heroID)
+    }
+
+    func removeHeroPIN(heroID: String) -> Bool {
+        guard let currentUserID else {
+            errorMessage = "Sign in before changing a Hero PIN."
+            return false
+        }
+
+        do {
+            try profilePINService.removeHeroPIN(for: currentUserID, heroID: heroID)
+            heroPINStates[heroID] = false
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     func completeAppTour() async -> Bool {
         guard let currentUserID, let profile = userProfile else { return false }
 
@@ -471,6 +521,7 @@ final class AuthStore: ObservableObject {
         userProfile = snapshot.userProfile
         familyProfile = snapshot.familyProfile
         refreshProfilePINState(for: snapshot.userProfile.userID)
+        refreshHeroPINStates(for: snapshot.userProfile.userID, familyProfile: snapshot.familyProfile)
         route = route(for: snapshot.userProfile, familyProfile: snapshot.familyProfile)
     }
 
@@ -520,6 +571,7 @@ final class AuthStore: ObservableObject {
                 crestName: crestName,
                 parentImageData: parentImageData
             )
+            refreshHeroPINStates(for: currentUserID, familyProfile: familyProfile)
             return true
         } catch {
             errorMessage = "We couldn't save the family profile right now."
@@ -547,6 +599,7 @@ final class AuthStore: ObservableObject {
                 avatar: avatar,
                 imageData: imageData
             )
+            refreshHeroPINStates(for: currentUserID, familyProfile: familyProfile)
             return familyProfile != nil
         } catch {
             errorMessage = "We couldn't save this hero profile right now."
@@ -608,6 +661,7 @@ final class AuthStore: ObservableObject {
                 avatar: avatar,
                 imageData: imageData
             )
+            refreshHeroPINStates(for: currentUserID, familyProfile: familyProfile)
             return familyProfile != nil
         } catch {
             errorMessage = "We couldn't add this hero right now."
@@ -642,6 +696,7 @@ final class AuthStore: ObservableObject {
         userProfile = nil
         familyProfile = nil
         isProfilePINSet = false
+        heroPINStates = [:]
         route = .auth
         errorMessage = nil
     }
@@ -652,6 +707,26 @@ final class AuthStore: ObservableObject {
             return
         }
         isProfilePINSet = profilePINService.hasPIN(for: userID)
+    }
+
+    private func refreshHeroPINStates(for userID: String?, familyProfile: FamilyProfile?) {
+        guard let userID, let familyProfile else {
+            heroPINStates = [:]
+            return
+        }
+
+        heroPINStates = Dictionary(
+            uniqueKeysWithValues: familyProfile.heroes.map { hero in
+                (hero.id, profilePINService.hasHeroPIN(for: userID, heroID: hero.id))
+            }
+        )
+    }
+
+    private func removeAllHeroPINs(for userID: String) {
+        familyProfile?.heroes.forEach { hero in
+            try? profilePINService.removeHeroPIN(for: userID, heroID: hero.id)
+        }
+        heroPINStates = [:]
     }
 
     private func friendlyMessage(for error: Error) -> String {

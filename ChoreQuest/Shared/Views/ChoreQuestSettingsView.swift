@@ -60,10 +60,14 @@ struct ChoreQuestSettingsView: View {
         }
         .sheet(isPresented: $isPresentingRoleSwitchPIN) {
             ProfilePINPromptView(
-                title: "Profile PIN",
-                message: "Enter the local profile PIN before switching profiles on this shared device.",
+                title: "Parent Gate",
+                message: "Enter the code before switching profiles on this shared device.",
                 isVerifying: authStore.isLoading,
-                onCancel: { isPresentingRoleSwitchPIN = false }
+                onCancel: { isPresentingRoleSwitchPIN = false },
+                onForgotPIN: {
+                    isPresentingRoleSwitchPIN = false
+                    authStore.signOut()
+                }
             ) { pin in
                 guard authStore.verifyProfilePIN(pin) else {
                     return false
@@ -165,6 +169,15 @@ struct ChoreQuestSettingsView: View {
                     }
                 }
 
+                settingsNavigationLink(
+                    title: "Hero PINs",
+                    subtitle: "Set or reset PINs for kid profiles on this device.",
+                    icon: "person.2.badge.key.fill",
+                    color: ChoreQuestColors.secondaryText
+                ) {
+                    HeroPINListView(authStore: authStore)
+                }
+
                 ForEach(familyProfile.heroes) { hero in
                     settingsNavigationLink(
                         title: hero.name,
@@ -204,6 +217,21 @@ struct ChoreQuestSettingsView: View {
                             imageData: imageData
                         )
                     }
+                }
+
+                settingsNavigationLink(
+                    title: authStore.isHeroPINSet(heroID: selectedHero.id) ? "Change Hero PIN" : "Set Hero PIN",
+                    subtitle: authStore.isHeroPINSet(heroID: selectedHero.id)
+                        ? "Your quest board asks for this PIN. A parent can reset it if forgotten."
+                        : "Optional when you share this device with another hero.",
+                    icon: authStore.isHeroPINSet(heroID: selectedHero.id) ? "lock.fill" : "lock.open.fill",
+                    color: ChoreQuestColors.secondaryText
+                ) {
+                    HeroPINSettingsView(
+                        authStore: authStore,
+                        hero: selectedHero,
+                        mode: .heroSelfManage
+                    )
                 }
             }
 
@@ -250,15 +278,15 @@ struct ChoreQuestSettingsView: View {
     }
 
     private var profilePINSection: some View {
-        Section("Profile PIN") {
+        Section("Parent Gate") {
             if role == .parent {
                 NavigationLink {
                     ProfilePINSettingsView(authStore: authStore)
                 } label: {
                     settingsRow(
-                        title: authStore.isProfilePINSet ? "Manage Profile PIN" : "Set Profile PIN",
+                        title: authStore.isProfilePINSet ? "Manage Parent Gate" : "Set Parent Gate",
                         subtitle: authStore.isProfilePINSet
-                            ? "Parent mode and profile switching are protected on this device."
+                            ? "Parent tools and profile switching ask for a code."
                             : "Recommended when parents and kids share this device.",
                         icon: authStore.isProfilePINSet ? "lock.shield.fill" : "lock.open.fill",
                         color: ChoreQuestColors.primary
@@ -266,9 +294,9 @@ struct ChoreQuestSettingsView: View {
                 }
             } else {
                 settingsRow(
-                    title: authStore.isProfilePINSet ? "Profile PIN Enabled" : "Profile PIN Available",
+                    title: authStore.isProfilePINSet ? "Parent Gate Enabled" : "Parent Gate Available",
                     subtitle: authStore.isProfilePINSet
-                        ? "A parent PIN protects profile switching on this shared device."
+                        ? "Profile switching asks for a parent code on this device."
                         : "A parent can turn this on from Parent mode when the device is shared.",
                     icon: authStore.isProfilePINSet ? "lock.shield.fill" : "lock.badge.clock.fill",
                     color: ChoreQuestColors.primary

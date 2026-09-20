@@ -16,7 +16,7 @@ enum ProfilePINError: LocalizedError {
         case .invalidPIN:
             return "Use a 4-digit PIN."
         case .keychainUnavailable:
-            return "The secure device keychain is not available right now."
+            return "We couldn't save this PIN right now."
         }
     }
 }
@@ -25,13 +25,29 @@ final class ProfilePINService {
     private let service = "com.rahulpawar166.ChoreQuest.profilePIN"
 
     func hasPIN(for userID: String) -> Bool {
-        var query = baseQuery(userID: userID)
+        hasPIN(for: userID, scope: .parentGate)
+    }
+
+    func hasHeroPIN(for userID: String, heroID: String) -> Bool {
+        hasPIN(for: userID, scope: .hero(heroID))
+    }
+
+    private func hasPIN(for userID: String, scope: ProfilePINScope) -> Bool {
+        var query = baseQuery(userID: userID, scope: scope)
         query[kSecReturnData as String] = false
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
     }
 
     func setPIN(_ pin: String, for userID: String) throws {
+        try setPIN(pin, for: userID, scope: .parentGate)
+    }
+
+    func setHeroPIN(_ pin: String, for userID: String, heroID: String) throws {
+        try setPIN(pin, for: userID, scope: .hero(heroID))
+    }
+
+    private func setPIN(_ pin: String, for userID: String, scope: ProfilePINScope) throws {
         guard Self.isValid(pin) else {
             throw ProfilePINError.invalidPIN
         }
@@ -44,7 +60,7 @@ final class ProfilePINService {
         )
         let data = try JSONEncoder().encode(record)
 
-        var query = baseQuery(userID: userID)
+        var query = baseQuery(userID: userID, scope: scope)
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
@@ -67,9 +83,17 @@ final class ProfilePINService {
     }
 
     func verify(_ pin: String, for userID: String) -> Bool {
+        verify(pin, for: userID, scope: .parentGate)
+    }
+
+    func verifyHeroPIN(_ pin: String, for userID: String, heroID: String) -> Bool {
+        verify(pin, for: userID, scope: .hero(heroID))
+    }
+
+    private func verify(_ pin: String, for userID: String, scope: ProfilePINScope) -> Bool {
         guard
             Self.isValid(pin),
-            let record = try? loadRecord(for: userID),
+            let record = try? loadRecord(for: userID, scope: scope),
             let salt = Data(base64Encoded: record.saltBase64)
         else {
             return false
@@ -80,14 +104,22 @@ final class ProfilePINService {
     }
 
     func removePIN(for userID: String) throws {
-        let status = SecItemDelete(baseQuery(userID: userID) as CFDictionary)
+        try removePIN(for: userID, scope: .parentGate)
+    }
+
+    func removeHeroPIN(for userID: String, heroID: String) throws {
+        try removePIN(for: userID, scope: .hero(heroID))
+    }
+
+    private func removePIN(for userID: String, scope: ProfilePINScope) throws {
+        let status = SecItemDelete(baseQuery(userID: userID, scope: scope) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw ProfilePINError.keychainUnavailable
         }
     }
 
-    private func loadRecord(for userID: String) throws -> ProfilePINRecord? {
-        var query = baseQuery(userID: userID)
+    private func loadRecord(for userID: String, scope: ProfilePINScope) throws -> ProfilePINRecord? {
+        var query = baseQuery(userID: userID, scope: scope)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
@@ -101,11 +133,11 @@ final class ProfilePINService {
         return try JSONDecoder().decode(ProfilePINRecord.self, from: data)
     }
 
-    private func baseQuery(userID: String) -> [String: Any] {
+    private func baseQuery(userID: String, scope: ProfilePINScope) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: "profile-pin.\(userID)"
+            kSecAttrAccount as String: scope.accountName(userID: userID)
         ]
     }
 
@@ -127,6 +159,20 @@ final class ProfilePINService {
         data.append(salt)
         data.append(Data(pin.utf8))
         return Data(SHA256.hash(data: data))
+    }
+}
+
+private enum ProfilePINScope {
+    case parentGate
+    case hero(String)
+
+    func accountName(userID: String) -> String {
+        switch self {
+        case .parentGate:
+            return "profile-pin.\(userID)"
+        case .hero(let heroID):
+            return "profile-pin.\(userID).hero.\(heroID)"
+        }
     }
 }
 
